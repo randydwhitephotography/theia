@@ -220,6 +220,7 @@
 - [vsx-registry] updated `requestretry` from `v3.1.0` to `v7.0.0` [#10831](https://github.com/eclipse-theia/theia/pull/10831)
 - [workspace] fixed `'save as'` for `untitled` schemes [#10608](https://github.com/eclipse-theia/theia/pull/10608)
 - [workspace] fixed the styling of the `path` in the dialog [#10814](https://github.com/eclipse-theia/theia/pull/10814)
+- [plugin] added support for `DebugProtocolBreakpoint` and `DebugProtocolSource` [#10011](https://github.com/eclipse-theia/theia/issues/10011) - Contributed on behalf of STMicroelectronics
 
 <a name="breaking_changes_1.24.0">[Breaking Changes:](#breaking_changes_1.24.0)</a>
 
