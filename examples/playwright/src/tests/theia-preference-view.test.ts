@@ -69,14 +69,14 @@ test.describe('Preference View', () => {
         const preferenceId = PreferenceIds.Editor.RenderWhitespace;
 
         await preferences.resetPreferenceById(preferenceId);
-        expect(await preferences.getOptionsPreferenceById(preferenceId)).toBe(DefaultPreferences.Editor.RenderWhitespace.None);
+        expect(await preferences.getOptionsPreferenceById(preferenceId)).toBe(DefaultPreferences.Editor.RenderWhitespace.Selection);
 
         await preferences.setOptionsPreferenceById(preferenceId, DefaultPreferences.Editor.RenderWhitespace.Boundary);
         await preferences.waitForModified(preferenceId);
         expect(await preferences.getOptionsPreferenceById(preferenceId)).toBe(DefaultPreferences.Editor.RenderWhitespace.Boundary);
 
         await preferences.resetPreferenceById(preferenceId);
-        expect(await preferences.getOptionsPreferenceById(preferenceId)).toBe(DefaultPreferences.Editor.RenderWhitespace.None);
+        expect(await preferences.getOptionsPreferenceById(preferenceId)).toBe(DefaultPreferences.Editor.RenderWhitespace.Selection);
     });
 
     test('should throw an error if we try to read, set, or reset a non-existing preference', async () => {

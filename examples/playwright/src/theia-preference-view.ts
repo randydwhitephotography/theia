@@ -25,7 +25,7 @@ const TheiaSettingsViewData = {
 
 export const PreferenceIds = {
     Editor: {
-        AutoSave: 'editor.autoSave',
+        AutoSave: 'files.autoSave',
         RenderWhitespace: 'editor.renderWhitespace'
     },
     Explorer: {
@@ -39,8 +39,10 @@ export const PreferenceIds = {
 export const DefaultPreferences = {
     Editor: {
         AutoSave: {
-            On: 'on',
-            Off: 'off'
+            Off: 'off',
+            AfterDelay: 'afterDelay',
+            OnFocusChange: 'onFocusChange',
+            OnWindowChange: 'onWindowChange'
         },
         RenderWhitespace: {
             None: 'none',
