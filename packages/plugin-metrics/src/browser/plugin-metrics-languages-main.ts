@@ -254,6 +254,11 @@ export class LanguagesMainPluginMetrics extends LanguagesMainImpl {
         super.$registerHoverProvider(handle, pluginInfo, selector);
     }
 
+    override $registerEvaluatableExpressionProvider(handle: number, pluginInfo: PluginInfo, selector: SerializedDocumentFilter[]): void {
+        this.registerPluginWithFeatureHandle(handle, pluginInfo.id);
+        super.$registerEvaluatableExpressionProvider(handle, pluginInfo, selector);
+    }
+
     override $registerDocumentHighlightProvider(handle: number, pluginInfo: PluginInfo, selector: SerializedDocumentFilter[]): void {
         this.registerPluginWithFeatureHandle(handle, pluginInfo.id);
         super.$registerDocumentHighlightProvider(handle, pluginInfo, selector);

@@ -93,10 +93,12 @@ import { BinaryBuffer } from '@theia/core/lib/common/buffer';
 import { DocumentSemanticTokensAdapter, DocumentRangeSemanticTokensAdapter } from './languages/semantic-highlighting';
 import { isReadonlyArray } from '../common/arrays';
 import { DisposableCollection } from '@theia/core/lib/common/disposable';
+import { EvaluatableExpressionAdapter } from './languages/evaluatable-expression';
 
 type Adapter = CompletionAdapter |
     SignatureHelpAdapter |
     HoverAdapter |
+    EvaluatableExpressionAdapter |
     DocumentHighlightAdapter |
     DocumentFormattingAdapter |
     RangeFormattingAdapter |
@@ -345,6 +347,19 @@ export class LanguagesExtImpl implements LanguagesExt {
         return this.withAdapter(handle, HoverAdapter, adapter => adapter.provideHover(URI.revive(resource), position, token), undefined);
     }
     // ### Hover Provider end
+
+    // ### EvaluatableExpression Provider begin
+    registerEvaluatableExpressionProvider(selector: theia.DocumentSelector, provider: theia.EvaluatableExpressionProvider, pluginInfo: PluginInfo): theia.Disposable {
+        const callId = this.addNewAdapter(new EvaluatableExpressionAdapter(provider, this.documents));
+        this.proxy.$registerEvaluatableExpressionProvider(callId, pluginInfo, this.transformDocumentSelector(selector));
+        return this.createDisposable(callId);
+    }
+
+    $provideEvaluatableExpression(handle: number, resource: UriComponents, position: theia.Position,
+        token: theia.CancellationToken): Promise<theia.EvaluatableExpression | undefined> {
+        return this.withAdapter(handle, EvaluatableExpressionAdapter, adapter => adapter.provideEvaluatableExpression(URI.revive(resource), position, token), undefined);
+    }
+    // ### EvaluatableExpression Provider end
 
     // ### Document Highlight Provider begin
     registerDocumentHighlightProvider(selector: theia.DocumentSelector, provider: theia.DocumentHighlightProvider, pluginInfo: PluginInfo): theia.Disposable {

@@ -8914,6 +8914,18 @@ export module '@theia/plugin' {
         export function registerHoverProvider(selector: DocumentSelector, provider: HoverProvider): Disposable;
 
         /**
+         * Register a provider that locates evaluatable expressions in text documents.
+         * The editor will evaluate the expression in the active debug session and will show the result in the debug hover.
+         *
+         * If multiple providers are registered for a language an arbitrary provider will be used.
+         *
+         * @param selector A selector that defines the documents this provider is applicable to.
+         * @param provider An evaluatable expression provider.
+         * @return A {@link Disposable} that unregisters this provider when being disposed.
+         */
+        export function registerEvaluatableExpressionProvider(selector: DocumentSelector, provider: EvaluatableExpressionProvider): Disposable;
+
+        /**
          * Register a workspace symbol provider.
          *
          * Multiple providers can be registered for a language. In that case providers are asked in
@@ -9203,6 +9215,40 @@ export module '@theia/plugin' {
          * signaled by returning `undefined` or `null`.
          */
         provideHover(document: TextDocument, position: Position, token: CancellationToken | undefined): ProviderResult<Hover>;
+    }
+
+    /**
+     * An evaluatable expression represents additional information for an expression in a document. Evaluatable expressions are
+     * evaluated by a debugger or runtime and their result is rendered in a tooltip-like widget.
+     * @internal
+     */
+    export interface EvaluatableExpression {
+        /**
+         * The range to which this expression applies.
+         */
+        range: Range;
+        /**
+         * This expression overrides the expression extracted from the range.
+         */
+        expression?: string;
+    }
+
+    /**
+     * The evaluatable expression provider interface defines the contract between extensions and
+     * the debug hover.
+     * @internal
+     */
+    export interface EvaluatableExpressionProvider {
+        /**
+         * Provide a hover for the given position and document. Multiple hovers at the same
+         * position will be merged by the editor. A hover can have a range which defaults
+         * to the word range at the position when omitted.
+         *
+         * @param document The document in which the command was invoked.
+         * @param position The position at which the command was invoked.
+         * @param token A cancellation token.
+         */
+        provideEvaluatableExpression(document: model.ITextModel, position: theia.Position, token: CancellationToken): ProviderResult<EvaluatableExpression>;
     }
 
     /**

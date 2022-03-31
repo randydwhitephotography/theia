@@ -328,7 +328,25 @@ export class LanguagesMainImpl implements LanguagesMain, Disposable {
         return this.proxy.$provideHover(handle, model.uri, position, token);
     }
 
-    $registerDocumentHighlightProvider(handle: number, pluginInfo: PluginInfo, selector: SerializedDocumentFilter[]): void {
+    $registerEvaluatableExpressionProvider(handle: number, pluginInfo: PluginInfo, selector: SerializedDocumentFilter[]): void {
+        const languageSelector = this.toLanguageSelector(selector);
+        const evaluatableExpressionProvider = this.createEvaluatableExpressionProvider(handle);
+        this.register(handle, (theia.languages.registerEvaluatableExpressionProvider as RegistrationFunction<theia.EvaluatableExpressionProvider>)
+            (languageSelector, evaluatableExpressionProvider));
+    }
+
+    protected createEvaluatableExpressionProvider(handle: number): theia.EvaluatableExpressionProvider {
+        return {
+            provideEvaluatableExpression: (model, position, token) => this.provideEvaluatableExpression(handle, model, position, token)
+        };
+    }
+
+    protected provideEvaluatableExpression(handle: number, model: monaco.editor.ITextModel, position: theia.Position,
+        token: monaco.CancellationToken): Promise<theia.EvaluatableExpression | undefined> {
+        return this.proxy.$provideEvaluatableExpression(handle, model.uri, position, token);
+    }
+
+    $registerDocumentHighlightProvider(handle: number, _pluginInfo: PluginInfo, selector: SerializedDocumentFilter[]): void {
         const languageSelector = this.toLanguageSelector(selector);
         const documentHighlightProvider = this.createDocumentHighlightProvider(handle);
         this.register(handle, (monaco.languages.registerDocumentHighlightProvider as RegistrationFunction<monaco.languages.DocumentHighlightProvider>)

@@ -162,7 +162,13 @@ export class DebugHoverWidget extends SourceTreeWidget implements monaco.editor.
         }
 
         this.options = options;
-        const matchingExpression = this.expressionProvider.get(this.editor.getControl().getModel()!, options.selection);
+
+        const textModel = this.editor.getControl().getModel();
+        if (!textModel) {
+            return;
+        }
+
+        const matchingExpression = this.expressionProvider.get(textModel, options.selection);
         if (!matchingExpression) {
             this.hide();
             return;
