@@ -11,6 +11,10 @@
 - [core] Move code for untitled resources into `core` from `plugin-ext` and allow users to open untitled editors with `New File` command. [#10868](https://github.com/eclipse-theia/theia/pull/10868)
 - [plugin] added support for `SnippetString.appendChoice` [#10969](https://github.com/eclipse-theia/theia/pull/10969) - Contributed on behalf of STMicroelectronics
 - [plugin] added support for `AccessibilityInformation` [#10961](https://github.com/eclipse-theia/theia/pull/10961) - Contributed on behalf of STMicroelectronics
+- [core] Heavily refactored the core messaging API. Replaced `vscode-ws-jsonrpc` with a custom RPC protocol that is better suited for handling binary data and enables message tunneling.
+  This impacts all main concepts of the messaging API. The API no longer exposes a `Connection` object and uses a generic `Channel` implementation instead.
+  * `MessagingService`: No longer offers the `listen` and `forward` method. Use `wsChannel`instead. [#11011](https://github.com/eclipse-theia/theia/pull/11011) - Contributed on behalf of STMicroelectronics.
+  
 
 <a name="breaking_changes_1.25.0">[Breaking Changes:](#breaking_changes_1.25.0)</a>
 
