@@ -1,5 +1,5 @@
 {
-  "name": "json-rpc-test",
+	"name": "json-rpc-test",
 	"displayName": "json-rpc-test",
 	"description": "Test extension for the improved JSON RPC protocol integration into the plugin API",
 	"version": "0.0.1",
@@ -10,40 +10,40 @@
 		"Other"
 	],
 	"activationEvents": [
-        "onStartupFinished"
+		"onStartupFinished"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
-      {
+			{
 				"command": "json-rpc-test.writeFile100kb",
 				"title": "Write File with 100kb",
-        "when": "workspaceFolderCount > 0"
+				"when": "workspaceFolderCount > 0"
 			},
-      {
+			{
 				"command": "json-rpc-test.writeFile1000kb",
 				"title": "Write File with 1MB",
-        "when": "workspaceFolderCount > 0"
+				"when": "workspaceFolderCount > 0"
 			},
-      {
+			{
 				"command": "json-rpc-test.writeFile10000kb",
 				"title": "Write File with 10MB",
-        "when": "workspaceFolderCount > 0"
+				"when": "workspaceFolderCount > 0"
 			},
-      {
+			{
 				"command": "json-rpc-test.readFile100kb",
 				"title": "Read File with 100kb",
-        "when": "workspaceFolderCount > 0"
+				"when": "workspaceFolderCount > 0"
 			},
-      {
+			{
 				"command": "json-rpc-test.readFile1000kb",
 				"title": "Read File with 1MB",
-        "when": "workspaceFolderCount > 0"
+				"when": "workspaceFolderCount > 0"
 			},
-      {
+			{
 				"command": "json-rpc-test.readFile10000kb",
 				"title": "Read File with 10MB",
-        "when": "workspaceFolderCount > 0"
+				"when": "workspaceFolderCount > 0"
 			}
 		]
 	},
@@ -53,7 +53,8 @@
 		"watch": "tsc -watch -p ./",
 		"pretest": "yarn run compile && yarn run lint",
 		"lint": "eslint src --ext ts",
-		"test": "node ./out/test/runTest.js"
+		"test": "node ./out/test/runTest.js",
+		"symlink": "symlink-dir . ../debug-plugin/json-rpc-test"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.66.0",
@@ -66,6 +67,7 @@
 		"glob": "^7.2.0",
 		"mocha": "^9.2.2",
 		"typescript": "^4.5.5",
-		"@vscode/test-electron": "^2.1.3"
+		"@vscode/test-electron": "^2.1.3",
+		"symlink-dir": "5.0.0"
 	}
 }

@@ -13,13 +13,22 @@
 //
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
-
+// eslint-disable-next-line import/no-extraneous-dependencies
+import 'reflect-metadata';
+import { Channel, ChannelCloseEvent, MessageProvider } from '@theia/core/lib/common/message-rpc/channel';
 import { Emitter } from '@theia/core/lib/common/event';
-import { RPCProtocolImpl, MessageType, ConnectionClosedError } from '../../common/rpc-protocol';
+import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { Socket } from 'net';
+import { RPCProtocolImpl } from '../../common/plugin-rpc-protocol';
+import { ConnectionClosedError } from '../../common/rpc-protocol';
+import { ProcessTerminatedMessage, ProcessTerminateMessage } from './hosted-plugin-protocol';
 import { PluginHostRPC } from './plugin-host-rpc';
-import { reviver } from '../../plugin/types-impl';
 
 console.log('PLUGIN_HOST(' + process.pid + ') starting instance');
+
+const pipe = new Socket({
+    fd: 4
+});
 
 // override exit() function, to do not allow plugin kill this node
 process.exit = function (code?: number): void {
@@ -74,18 +83,8 @@ process.on('rejectionHandled', (promise: Promise<any>) => {
 });
 
 let terminating = false;
-const emitter = new Emitter<string>();
-const rpc = new RPCProtocolImpl({
-    onMessage: emitter.event,
-    send: (m: string) => {
-        if (process.send && !terminating) {
-            process.send(m);
-        }
-    }
-},
-{
-    reviver: reviver
-});
+const channel = createChannel();
+const rpc = new RPCProtocolImpl(channel);
 
 process.on('message', async (message: string) => {
     if (terminating) {
@@ -93,10 +92,9 @@ process.on('message', async (message: string) => {
     }
     try {
         const msg = JSON.parse(message);
-        if ('type' in msg && msg.type === MessageType.Terminate) {
+        if (ProcessTerminateMessage.is(msg)) {
             terminating = true;
-            emitter.dispose();
-            if ('stopTimeout' in msg && typeof msg.stopTimeout === 'number' && msg.stopTimeout) {
+            if (msg.stopTimeout) {
                 await Promise.race([
                     pluginHostRPC.terminate(),
                     new Promise(resolve => setTimeout(resolve, msg.stopTimeout))
@@ -106,10 +104,9 @@ process.on('message', async (message: string) => {
             }
             rpc.dispose();
             if (process.send) {
-                process.send(JSON.stringify({ type: MessageType.Terminated }));
+                process.send(JSON.stringify({ type: ProcessTerminatedMessage.TYPE }));
             }
-        } else {
-            emitter.fire(message);
+
         }
     } catch (e) {
         console.error(e);
@@ -118,3 +115,32 @@ process.on('message', async (message: string) => {
 
 const pluginHostRPC = new PluginHostRPC(rpc);
 pluginHostRPC.initialize();
+
+function createChannel(): Channel {
+    const onCloseEmitter = new Emitter<ChannelCloseEvent>();
+    const onMessageEmitter = new Emitter<MessageProvider>();
+    const onErrorEmitter = new Emitter<unknown>();
+    const eventEmitter: NodeJS.EventEmitter = process;
+    eventEmitter.on('error', error => onErrorEmitter.fire(error));
+    eventEmitter.on('close', () => onCloseEmitter.fire({ reason: 'Process has been closed from remote site (parent)' }));
+    pipe.on('data', (data: Uint8Array) => {
+        onMessageEmitter.fire(() => new ArrayBufferReadBuffer(data.buffer));
+    });
+
+    return {
+        close: () => { },
+        onClose: onCloseEmitter.event,
+        onError: onErrorEmitter.event,
+        onMessage: onMessageEmitter.event,
+        getWriteBuffer: () => {
+            const result = new ArrayBufferWriteBuffer();
+            result.onCommit(buffer => {
+                if (!terminating) {
+                    pipe.write(new Uint8Array(buffer));
+                }
+            });
+
+            return result;
+        }
+    };
+}
