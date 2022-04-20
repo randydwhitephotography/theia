@@ -4,6 +4,16 @@
 
 - [Previous Changelogs](https://github.com/eclipse-theia/theia/tree/master/doc/changelogs/)
 
+## v1.27.0 - 6/30/2022
+
+[1.27.0 Milestone](https://github.com/eclipse-theia/theia/milestone/36)
+
+- [core] Added support for moving webview-based views into a secondary window/tab. Added new extension `secondary-window-ui` that contributes the UI integration to use this. [#11048](https://github.com/eclipse-theia/theia/pull/11048) - Contributed on behalf of ST Microelectronics and Ericsson and by ARM and EclipseSource
+
+<a name="breaking_changes_1.27.0">[Breaking Changes:](#breaking_changes_1.27.0)</a>
+
+- [core] Added constructor injection to `ApplicationShell`: `SecondaryWindowHandler`. [#11048](https://github.com/eclipse-theia/theia/pull/11048) - Contributed on behalf of ST Microelectronics and Ericsson and by ARM and EclipseSource
+
 ## v1.26.0 - 5/26/2022
 
 - [application-package] introduce application config prop `validatePreferencesSchema` to control whether to validate preferences on start [#11189](https://github.com/eclipse-theia/theia/pull/11189)
@@ -205,9 +215,9 @@
 - [debug] The interface method `DebugService#provideDynamicDebugConfigurations` changes the return type to  `Record<string, DebugConfiguration[]>` [#10910](https://github.com/eclipse-theia/theia/pull/10910)
   This impacts the corresponding return type for `DebugConfigurationManager#provideDynamicDebugConfigurations`.
   The following functions under `plugin-api-rpc.ts#DebugExt` and in the `PluginDebugAdapterContribution` are deprecated
-    * $provideDebugConfigurations
-    * $resolveDebugConfigurations
-    * $resolveDebugConfigurationWithSubstitutedVariablesByHandle
+  - $provideDebugConfigurations
+  - $resolveDebugConfigurations
+  - $resolveDebugConfigurationWithSubstitutedVariablesByHandle
     The `PluginDebugAdapterContributionRegistrator` interface has been removed
 - [filesystem] The `generateUniqueResourceURI` method from the `FileSystemUtils` class has an updated signature. Additionally, the method now returns a generated Uri that uses spaces as separators. The naming scheme was also changed to match VSCode. [10767](https://github.com/eclipse-theia/theia/pull/10767)
 - [markers] `ProblemDecorator` reimplemented to reduce redundancy and align more closely with VSCode. `collectMarkers` now returns `Map<string, TreeDecoration.Data>`, `getOverlayIconColor` renamed to `getColor`, `getOverlayIcon` removed, `appendContainerMarkers` returns `void` [#10820](https://github.com/eclipse-theia/theia/pull/10820)
