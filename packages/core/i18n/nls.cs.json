@@ -267,6 +267,9 @@
       "resultSubset": "Jedná se pouze o podmnožinu všech výsledků. Pro zúžení seznamu výsledků použijte konkrétnější vyhledávací výraz.",
       "searchOnEditorModification": "Prohledat aktivní editor při úpravě."
     },
+    "secondary-window-ui": {
+      "extract-widget": "Přesunutí zobrazení do sekundárního okna"
+    },
     "task": {
       "attachTask": "Připojte úkol...",
       "clearHistory": "Vymazat historii",

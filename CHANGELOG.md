@@ -4,9 +4,16 @@
 
 - [Previous Changelogs](https://github.com/eclipse-theia/theia/tree/master/doc/changelogs/)
 
-## v.1.26.0
+## v1.26.0 - 5/26/2022
+
+[1.26.0 Milestone](https://github.com/eclipse-theia/theia/milestone/34)
 
 - [plugin] Introduce `DebugSession#workspaceFolder` [#11090](https://github.com/eclipse-theia/theia/pull/11090) - Contributed on behalf of STMicroelectronics
+- [core] Added support for moving webview-based views into a secondary window/tab. Added new extension `secondary-window-ui` that contributes the UI integration to use this. [#11048](https://github.com/eclipse-theia/theia/pull/11048) - Contributed on behalf of ST Microelectronics and Ericsson and by ARM and EclipseSource
+
+<a name="breaking_changes_1.26.0">[Breaking Changes:](#breaking_changes_1.26.0)</a>
+
+- [core] Added constructor injection to `ApplicationShell`: `SecondaryWindowHandler`. [#11048](https://github.com/eclipse-theia/theia/pull/11048) - Contributed on behalf of ST Microelectronics and Ericsson and by ARM and EclipseSource
 
 ## v1.25.0 - 4/28/2022
 
