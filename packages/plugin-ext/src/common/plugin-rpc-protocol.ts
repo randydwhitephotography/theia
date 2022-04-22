@@ -34,7 +34,7 @@ export class RPCProtocolImpl implements RPCProtocol {
     );
 
     constructor(channel: Channel) {
-        this.multiplexer = new ChannelMultiplexer(channel);
+        this.multiplexer = new QueuingChannelMultiplexer(channel);
         this.toDispose.push(Disposable.create(() => this.multiplexer.closeUnderlyingChannel()));
     }
 
@@ -60,15 +60,10 @@ export class RPCProtocolImpl implements RPCProtocol {
 
     protected createProxy<T>(proxyId: string): T {
         const handler = new ClientProxyHandler(proxyId);
-        const channel = this.multiplexer.getOpenChannel(proxyId);
-        if (channel) {
-            handler.listen(channel);
-        } else {
-            this.multiplexer.open(proxyId).then(_channel => {
-                handler.listen(_channel);
-            });
-        }
 
+        this.multiplexer.open(proxyId).then(_channel => {
+            handler.listen(_channel);
+        });
         return new Proxy(Object.create(null), handler);
     }
 
@@ -78,15 +73,20 @@ export class RPCProtocolImpl implements RPCProtocol {
         }
         const invocationHandler = this.locals.get(identifier.id);
         if (!invocationHandler) {
-            const handler = new RpcInvocationHandler(instance);
+            const handler = new RpcInvocationHandler(identifier.id, instance);
+
             const channel = this.multiplexer.getOpenChannel(identifier.id);
             if (channel) {
                 handler.listen(channel);
             } else {
-                this.multiplexer.open(identifier.id).then(_channel => {
-                    handler.listen(_channel);
+                const channelOpenListener = this.multiplexer.onDidOpenChannel(event => {
+                    if (event.id === identifier.id) {
+                        handler.listen(event.channel);
+                        channelOpenListener.dispose();
+                    }
                 });
             }
+
             this.locals.set(identifier.id, handler);
             if (Disposable.is(instance)) {
                 this.toDispose.push(instance);

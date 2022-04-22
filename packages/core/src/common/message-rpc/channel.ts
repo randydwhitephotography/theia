@@ -175,7 +175,7 @@ export class ChannelMultiplexer {
             const channel = this.createChannel(id);
             this.pendingOpen.delete(id);
             this.openChannels.set(id, channel);
-            resolve!(channel);
+            resolve(channel);
             this.onOpenChannelEmitter.fire({ id, channel });
         }
     }
@@ -232,6 +232,10 @@ export class ChannelMultiplexer {
     }
 
     open(id: string): Promise<Channel> {
+        const existingChannel = this.getOpenChannel(id);
+        if (existingChannel) {
+            return Promise.resolve(existingChannel);
+        }
         const result = new Promise<Channel>((resolve, reject) => {
             this.pendingOpen.set(id, resolve);
         });

@@ -29,11 +29,9 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
     private decoder = new PluginRpcMessageDecoder();
 
     constructor(protected readonly id: string) {
-        console.log(`[DEBUG] Create proxy '${id}`);
     }
 
     listen(channel: Channel): void {
-        console.log(`[DEBUG] Invoke listen for proxy ${this.id}`);
         const client = new RpcClient(channel, { decoder: this.decoder, encoder: this.encoder });
         this.channelDeferred.resolve(client);
     }
@@ -42,21 +40,15 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
         const isNotify = this.isNotification(p);
         return (...args: any[]) => {
             const method = p.toString();
-            console.log([`[DEBUG] Invoke proxy ${this.id} for ${method} ${args}`]);
             return this.channelDeferred.promise.then((connection: RpcClient) =>
                 new Promise((resolve, reject) => {
                     try {
                         if (isNotify) {
-                            console.log(`[DEBUG] Send notification ${method} ${args}`);
                             connection.sendNotification(method, args);
                             resolve(undefined);
                         } else {
-                            console.log(`[DEBUG] Send request ${method} ${args}`);
                             const resultPromise = connection.sendRequest(method, args) as Promise<any>;
                             resultPromise.then((result: any) => {
-                                console.log(`[DEBUG] Resolve request ${method} ${args}`);
-                                console.log(`[DEBUG] With ${result} `);
-
                                 resolve(result);
                             }).catch(e => {
                                 reject(e);
@@ -72,7 +64,7 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
 
     /**
      * Return whether the given property represents a notification. If true,
-     * the promise returned from the invocation will resolve immediatey to `undefined`
+     * the promise returned from the invocation will resolve immediately to `undefined`
      *
      * A property leads to a notification rather than a method call if its name
      * begins with `notify` or `on`.
@@ -81,7 +73,11 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
      * @return Whether `p` represents a notification.
      */
     protected isNotification(p: PropertyKey): boolean {
-        return p.toString().startsWith('notify') || p.toString().startsWith('on');
+        let propertyString = p.toString();
+        if (propertyString.charCodeAt(0) === 36/* CharCode.DollarSign */) {
+            propertyString = propertyString.substring(1);
+        }
+        return propertyString.startsWith('notify') || propertyString.startsWith('on');
     }
 }
 
@@ -89,7 +85,7 @@ export class RpcInvocationHandler {
     private encoder = new PluginRpcMessageEncoder();
     private decoder = new PluginRpcMessageDecoder();
 
-    constructor(readonly target: any) {
+    constructor(readonly id: string, readonly target: any) {
     }
 
     listen(channel: Channel): void {
@@ -98,12 +94,11 @@ export class RpcInvocationHandler {
     }
 
     protected async handleRequest(method: string, args: any[]): Promise<any> {
-        console.log(`[DEBUG] Handle requests ${method} ${args}`);
         return this.target[method](...args);
     }
 
     protected onNotification(method: string, args: any[]): void {
-        console.log(`[DEBUG] Handle notification ${method} ${args}`);
         this.target[method](args);
     }
 }
+

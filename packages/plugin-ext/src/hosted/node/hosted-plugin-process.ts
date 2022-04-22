@@ -160,7 +160,6 @@ export class HostedPluginProcess implements ServerPluginRunner {
         });
 
         const pipe = this.childProcess.stdio[4] as Writable;
-
         pipe.on('data', (data: Uint8Array) => {
             // TODO avoid marshalling
             if (this.client) {
