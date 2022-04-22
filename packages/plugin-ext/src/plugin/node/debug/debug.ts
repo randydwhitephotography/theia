@@ -191,17 +191,17 @@ export class DebugExtImpl implements DebugExt {
     static SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z0-9\+\-\.]+:/;
     asDebugSourceUri(source: theia.DebugProtocolSource, session?: theia.DebugSession): theia.Uri {
         const raw = source as DebugProtocol.Source;
-        const uri = this.asDebugSourceURI(raw, session?.id);
+        const uri = this.getDebugSourceUri(raw, session?.id);
         return URIImpl.parse(uri.toString());
     }
 
-    private asDebugSourceURI(raw: DebugProtocol.Source, sessionId?: string): TheiaURI {
+    private getDebugSourceUri(raw: DebugProtocol.Source, sessionId?: string): TheiaURI {
         if (raw.sourceReference && raw.sourceReference > 0) {
-            let query = String(raw.sourceReference);
+            let query = 'ref=' + String(raw.sourceReference);
             if (sessionId) {
-                query += `?session=${sessionId}`;
+                query += `&session=${sessionId}`;
             }
-            return new TheiaURI().withScheme(DebugExtImpl.SCHEME).withPath(raw.name!).withQuery(query);
+            return new TheiaURI().withScheme(DebugExtImpl.SCHEME).withPath(raw.path || '').withQuery(query);
         }
         if (!raw.path) {
             throw new Error('Unrecognized source type: ' + JSON.stringify(raw));
