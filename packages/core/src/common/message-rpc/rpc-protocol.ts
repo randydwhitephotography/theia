@@ -104,11 +104,14 @@ export class RpcServer {
             const result = await this.requestHandler(method, args);
             this.cancellationTokenSources.delete(id);
             this.encoder.replyOK(output, id, result);
+            output.commit();
         } catch (err) {
+            // Get a new output buffer to avoid corrupt messages in case encoding the result fails.
+            const errorOutput = this.channel.getWriteBuffer();
             this.cancellationTokenSources.delete(id);
-            this.encoder.replyErr(output, id, err);
+            this.encoder.replyErr(errorOutput, id, err);
+            errorOutput.commit();
         }
-        output.commit();
     }
 
     protected async handleNotify(id: number, method: string, args: any[]): Promise<void> {
