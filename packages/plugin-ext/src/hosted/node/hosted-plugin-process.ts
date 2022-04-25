@@ -159,9 +159,16 @@ export class HostedPluginProcess implements ServerPluginRunner {
             args: []
         });
 
+        let receivedChunks: Uint8Array[] = [];
         const pipe = this.childProcess.stdio[4] as Writable;
         pipe.on('data', (data: Uint8Array) => {
             // TODO avoid marshalling
+            receivedChunks.push(data);
+        });
+        pipe.on('end', () => {
+            const chunks = receivedChunks;
+            receivedChunks = [];
+            const data = Buffer.concat(chunks);
             if (this.client) {
                 this.client.postMessage(PLUGIN_HOST_BACKEND, toArrayBuffer(data));
             }

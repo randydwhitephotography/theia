@@ -17,7 +17,7 @@
 import 'reflect-metadata';
 import { Channel, ChannelCloseEvent, MessageProvider } from '@theia/core/lib/common/message-rpc/channel';
 import { Emitter } from '@theia/core/lib/common/event';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer, toArrayBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
 import { Socket } from 'net';
 import { RPCProtocolImpl } from '../../common/plugin-rpc-protocol';
 import { ConnectionClosedError } from '../../common/rpc-protocol';
@@ -117,6 +117,7 @@ const pluginHostRPC = new PluginHostRPC(rpc);
 pluginHostRPC.initialize();
 
 function createChannel(): Channel {
+    let receivedChunks: Uint8Array[] = [];
     const onCloseEmitter = new Emitter<ChannelCloseEvent>();
     const onMessageEmitter = new Emitter<MessageProvider>();
     const onErrorEmitter = new Emitter<unknown>();
@@ -124,7 +125,13 @@ function createChannel(): Channel {
     eventEmitter.on('error', error => onErrorEmitter.fire(error));
     eventEmitter.on('close', () => onCloseEmitter.fire({ reason: 'Process has been closed from remote site (parent)' }));
     pipe.on('data', (data: Uint8Array) => {
-        onMessageEmitter.fire(() => new ArrayBufferReadBuffer(data.buffer));
+        receivedChunks.push(data);
+    });
+    pipe.on('end', () => {
+        const chunks = receivedChunks;
+        receivedChunks = [];
+        const data = Buffer.concat(chunks);
+        onMessageEmitter.fire(() => new ArrayBufferReadBuffer(toArrayBuffer(data)));
     });
 
     return {
