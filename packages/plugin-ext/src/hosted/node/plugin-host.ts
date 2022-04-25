@@ -17,12 +17,13 @@
 import 'reflect-metadata';
 import { Channel, ChannelCloseEvent, MessageProvider } from '@theia/core/lib/common/message-rpc/channel';
 import { Emitter } from '@theia/core/lib/common/event';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer, toArrayBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
 import { Socket } from 'net';
 import { RPCProtocolImpl } from '../../common/plugin-rpc-protocol';
 import { ConnectionClosedError } from '../../common/rpc-protocol';
 import { ProcessTerminatedMessage, ProcessTerminateMessage } from './hosted-plugin-protocol';
 import { PluginHostRPC } from './plugin-host-rpc';
+import { configureCachedReceive, prependMessageSize } from './cached-process-messaging';
 
 console.log('PLUGIN_HOST(' + process.pid + ') starting instance');
 
@@ -117,21 +118,14 @@ const pluginHostRPC = new PluginHostRPC(rpc);
 pluginHostRPC.initialize();
 
 function createChannel(): Channel {
-    let receivedChunks: Uint8Array[] = [];
     const onCloseEmitter = new Emitter<ChannelCloseEvent>();
     const onMessageEmitter = new Emitter<MessageProvider>();
     const onErrorEmitter = new Emitter<unknown>();
     const eventEmitter: NodeJS.EventEmitter = process;
     eventEmitter.on('error', error => onErrorEmitter.fire(error));
     eventEmitter.on('close', () => onCloseEmitter.fire({ reason: 'Process has been closed from remote site (parent)' }));
-    pipe.on('data', (data: Uint8Array) => {
-        receivedChunks.push(data);
-    });
-    pipe.on('end', () => {
-        const chunks = receivedChunks;
-        receivedChunks = [];
-        const data = Buffer.concat(chunks);
-        onMessageEmitter.fire(() => new ArrayBufferReadBuffer(toArrayBuffer(data)));
+    configureCachedReceive(pipe, buffer => {
+        onMessageEmitter.fire(() => new ArrayBufferReadBuffer(buffer));
     });
 
     return {
@@ -143,7 +137,8 @@ function createChannel(): Channel {
             const result = new ArrayBufferWriteBuffer();
             result.onCommit(buffer => {
                 if (!terminating) {
-                    pipe.write(new Uint8Array(buffer));
+                    const toWrite = prependMessageSize(buffer);
+                    pipe.write(new Uint8Array(toWrite));
                 }
             });
 

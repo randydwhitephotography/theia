@@ -24,6 +24,13 @@ export class ArrayBufferWriteBuffer implements WriteBuffer {
         return new DataView(this.buffer);
     }
 
+    concat(value: ArrayBuffer): WriteBuffer {
+        this.ensureCapacity(value.byteLength);
+        new Uint8Array(this.buffer).set(new Uint8Array(value), this.offset);
+        this.offset += value.byteLength;
+        return this;
+    }
+
     ensureCapacity(value: number): WriteBuffer {
         let newLength = this.buffer.byteLength;
         while (newLength < this.offset + value) {
