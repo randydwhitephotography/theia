@@ -21,7 +21,7 @@ import { createIpcEnv } from '@theia/core/lib/node/messaging/ipc-protocol';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
 import * as cp from 'child_process';
 import * as psTree from 'ps-tree';
-import { Writable } from 'stream';
+import { Readable, Writable } from 'stream';
 import { DeployedPlugin, HostedPluginClient, PluginHostEnvironmentVariable, PLUGIN_HOST_BACKEND, ServerPluginRunner } from '../../common/plugin-protocol';
 import { HostedPluginCliContribution } from './hosted-plugin-cli-contribution';
 import { HostedPluginLocalizationService } from './hosted-plugin-localization-service';
@@ -160,7 +160,7 @@ export class HostedPluginProcess implements ServerPluginRunner {
         });
 
         let receivedChunks: Uint8Array[] = [];
-        const pipe = this.childProcess.stdio[4] as Writable;
+        const pipe = this.childProcess.stdio[4] as Readable;
         pipe.on('data', (data: Uint8Array) => {
             // TODO avoid marshalling
             receivedChunks.push(data);
@@ -174,8 +174,6 @@ export class HostedPluginProcess implements ServerPluginRunner {
             }
         });
     }
-
-
 
     readonly HOSTED_PLUGIN_ENV_REGEXP_EXCLUSION = new RegExp('HOSTED_PLUGIN*');
     private fork(options: IPCConnectionOptions): cp.ChildProcess {
