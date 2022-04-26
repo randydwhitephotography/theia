@@ -36,10 +36,13 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
         this.channelDeferred.resolve(client);
     }
 
-    get(target: T, p: string | symbol, receiver: any): any {
-        const isNotify = this.isNotification(p);
+    get(target: any, name: string, receiver: any): any {
+        if (target[name] || name.charCodeAt(0) !== 36 /* CharCode.DollarSign */) {
+            return target[name];
+        }
+        const isNotify = this.isNotification(name);
         return (...args: any[]) => {
-            const method = p.toString();
+            const method = name.toString();
             return this.channelDeferred.promise.then((connection: RpcClient) =>
                 new Promise((resolve, reject) => {
                     try {
