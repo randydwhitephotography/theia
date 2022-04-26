@@ -104,9 +104,10 @@ export class PluginRpcMessageEncoder extends RpcMessageEncoder {
         super.registerEncoders();
 
         this.registerEncoder(ObjectType.JSON, {
-            is: value => true,
+            is: value => value != null, // == null is handled by undefined encoder
             write: (buf, value) => {
-                buf.writeString(JSON.stringify(value, ObjectsTransferrer.replacer));
+                const json = JSON.stringify(value, ObjectsTransferrer.replacer);
+                buf.writeString(json);
             }
         }, true);
 
