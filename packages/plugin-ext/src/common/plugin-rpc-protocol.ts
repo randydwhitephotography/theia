@@ -20,6 +20,7 @@ import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/c
 import { ObjectType, RpcMessageDecoder, RpcMessageEncoder } from '@theia/core/lib/common/message-rpc/rpc-message-encoder';
 import URI from '@theia/core/lib/common/uri';
 import { URI as VSCodeURI } from '@theia/core/shared/vscode-uri';
+import { BinaryBuffer } from '@theia/core/lib/common/buffer';
 import { Position, Range } from '../plugin/types-impl';
 import { ClientProxyHandler, RpcInvocationHandler } from './proxy-handler';
 import { ConnectionClosedError, ProxyIdentifier, RPCProtocol } from './rpc-protocol';
@@ -102,6 +103,13 @@ export class PluginRpcMessageEncoder extends RpcMessageEncoder {
     protected override registerEncoders(): void {
         super.registerEncoders();
 
+        this.registerEncoder(ObjectType.JSON, {
+            is: value => true,
+            write: (buf, value) => {
+                buf.writeString(JSON.stringify(value, ObjectsTransferrer.replacer));
+            }
+        }, true);
+
         this.registerEncoder(ObjectType.URI, {
             is: value => value instanceof URI,
             write: (buf, value) => buf.writeString(value.toString())
@@ -136,6 +144,9 @@ export class PluginRpcMessageEncoder extends RpcMessageEncoder {
 export class PluginRpcMessageDecoder extends RpcMessageDecoder {
     protected override registerDecoders(): void {
         super.registerDecoders();
+        this.registerDecoder(ObjectType.JSON, {
+            read: buf => JSON.parse(buf.readString(), ObjectsTransferrer.reviver)
+        }, true);
         this.registerDecoder(ObjectType.URI, {
             read: buf => new URI(buf.readString())
         }, true);
@@ -222,5 +233,99 @@ export class QueuingChannelMultiplexer extends ChannelMultiplexer {
     protected handleSingleMessage(buffer: ReadBuffer): void {
         return super.handleMessage(buffer);
     }
+}
+
+interface SerializedObject {
+    $type: SerializedObjectType;
+    data: string;
+}
+
+enum SerializedObjectType {
+    THEIA_URI,
+    VSCODE_URI,
+    THEIA_RANGE,
+    TEXT_BUFFER
+}
+
+function isSerializedObject(obj: any): obj is SerializedObject {
+    return obj && obj.$type !== undefined && obj.data !== undefined;
+}
+/**
+ * These functions are responsible for correct transferring objects via rpc channel.
+ *
+ * To reach that some specific kind of objects is converted to json in some custom way
+ * and then, after receiving, revived to objects again,
+ * so there is feeling that object was transferred via rpc channel.
+ *
+ * To distinguish between regular and altered objects, field $type is added to altered ones.
+ * Also value of that field specifies kind of the object.
+ */
+export namespace ObjectsTransferrer {
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    export function replacer(key: string | undefined, value: any): any {
+        if (value instanceof URI) {
+            return {
+                $type: SerializedObjectType.THEIA_URI,
+                data: value.toString()
+            } as SerializedObject;
+        } else if (value instanceof Range) {
+            const range = value as Range;
+            const serializedValue = {
+                start: {
+                    line: range.start.line,
+                    character: range.start.character
+                },
+                end: {
+                    line: range.end.line,
+                    character: range.end.character
+                }
+            };
+            return {
+                $type: SerializedObjectType.THEIA_RANGE,
+                data: JSON.stringify(serializedValue)
+            } as SerializedObject;
+        } else if (value && value['$mid'] === 1) {
+            // Given value is VSCode URI
+            // We cannot use instanceof here because VSCode URI has toJSON method which is invoked before this replacer.
+            const uri = VSCodeURI.revive(value);
+            return {
+                $type: SerializedObjectType.VSCODE_URI,
+                data: uri.toString()
+            } as SerializedObject;
+        } else if (value instanceof BinaryBuffer) {
+            const bytes = [...value.buffer.values()];
+            return {
+                $type: SerializedObjectType.TEXT_BUFFER,
+                data: JSON.stringify({ bytes })
+            };
+        }
+
+        return value;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    export function reviver(key: string | undefined, value: any): any {
+        if (isSerializedObject(value)) {
+            switch (value.$type) {
+                case SerializedObjectType.THEIA_URI:
+                    return new URI(value.data);
+                case SerializedObjectType.VSCODE_URI:
+                    return VSCodeURI.parse(value.data);
+                case SerializedObjectType.THEIA_RANGE:
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const obj: any = JSON.parse(value.data);
+                    const start = new Position(obj.start.line, obj.start.character);
+                    const end = new Position(obj.end.line, obj.end.character);
+                    return new Range(start, end);
+                case SerializedObjectType.TEXT_BUFFER:
+                    const data: { bytes: number[] } = JSON.parse(value.data);
+                    return BinaryBuffer.wrap(Uint8Array.from(data.bytes));
+            }
+        }
+
+        return value;
+    }
+
 }
 
