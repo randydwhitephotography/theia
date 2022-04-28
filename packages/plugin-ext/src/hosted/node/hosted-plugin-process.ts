@@ -26,7 +26,7 @@ import { DeployedPlugin, HostedPluginClient, PluginHostEnvironmentVariable, PLUG
 import { HostedPluginCliContribution } from './hosted-plugin-cli-contribution';
 import { HostedPluginLocalizationService } from './hosted-plugin-localization-service';
 import { ProcessTerminatedMessage, ProcessTerminateMessage } from './hosted-plugin-protocol';
-import { configureCachedReceive, prependMessageSize } from './cached-process-messaging';
+import { configureCachedReceive, encodeMessageSize } from './cached-process-messaging';
 
 export interface IPCConnectionOptions {
     readonly serverName: string;
@@ -89,11 +89,12 @@ export class HostedPluginProcess implements ServerPluginRunner {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public onMessage(pluginHostId: string, jsonMessage: ArrayBuffer): void {
+    public onMessage(pluginHostId: string, message: ArrayBuffer): void {
         if (this.childProcess) {
-            const toWrite = prependMessageSize(jsonMessage);
             const pipe = this.childProcess.stdio[4] as Writable;
-            pipe.write(new Uint8Array(toWrite));
+            const messageStart = encodeMessageSize(message);
+            pipe.write(messageStart);
+            pipe.write(new Uint8Array(message));
         }
     }
 

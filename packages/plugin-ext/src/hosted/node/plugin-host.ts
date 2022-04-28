@@ -23,7 +23,7 @@ import { RPCProtocolImpl } from '../../common/plugin-rpc-protocol';
 import { ConnectionClosedError } from '../../common/rpc-protocol';
 import { ProcessTerminatedMessage, ProcessTerminateMessage } from './hosted-plugin-protocol';
 import { PluginHostRPC } from './plugin-host-rpc';
-import { configureCachedReceive, prependMessageSize } from './cached-process-messaging';
+import { configureCachedReceive, encodeMessageSize } from './cached-process-messaging';
 
 console.log('PLUGIN_HOST(' + process.pid + ') starting instance');
 
@@ -137,8 +137,9 @@ function createChannel(): Channel {
             const result = new ArrayBufferWriteBuffer();
             result.onCommit(buffer => {
                 if (!terminating) {
-                    const toWrite = prependMessageSize(buffer);
-                    pipe.write(new Uint8Array(toWrite));
+                    const messageStart = encodeMessageSize(buffer);
+                    pipe.write(messageStart);
+                    pipe.write(new Uint8Array(buffer));
                 }
             });
 

@@ -75,11 +75,10 @@ export function configureCachedReceive(readable: Readable, onReceived: (buffer: 
     });
 }
 
-export function prependMessageSize(buffer: ArrayBuffer): ArrayBuffer {
+export function encodeMessageSize(buffer: ArrayBuffer): Uint8Array {
     // Prepend message length before data
-    const arrayBuffer = new ArrayBuffer(4 + buffer.byteLength);
+    const arrayBuffer = new ArrayBuffer(4);
     const writeBuffer = new ArrayBufferWriteBuffer(arrayBuffer);
     writeBuffer.writeUint32(buffer.byteLength);
-    writeBuffer.concat(buffer);
-    return writeBuffer.getCurrentContents();
+    return new Uint8Array(writeBuffer.getCurrentContents());
 }
