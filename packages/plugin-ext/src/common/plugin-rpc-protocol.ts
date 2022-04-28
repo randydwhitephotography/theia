@@ -16,14 +16,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { Channel, ChannelMultiplexer, Disposable, DisposableCollection, ReadBuffer, RpcConnection, WriteBuffer } from '@theia/core';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
-import { ObjectType, RpcMessageDecoder, RpcMessageEncoder } from '@theia/core/lib/common/message-rpc/rpc-message-encoder';
+import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer, toArrayBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { ObjectType, RpcMessageDecoder, RpcMessageEncoder, SerializedError, transformErrorForSerialization } from '@theia/core/lib/common/message-rpc/rpc-message-encoder';
 import URI from '@theia/core/lib/common/uri';
 import { URI as VSCodeURI } from '@theia/core/shared/vscode-uri';
 import { BinaryBuffer } from '@theia/core/lib/common/buffer';
 import { Position, Range } from '../plugin/types-impl';
 import { ClientProxyHandler, RpcInvocationHandler } from './proxy-handler';
 import { ConnectionClosedError, ProxyIdentifier, RPCProtocol } from './rpc-protocol';
+import { ResponseError } from '@theia/core/shared/vscode-languageserver-protocol';
 
 export class RPCProtocolImpl implements RPCProtocol {
     private readonly locals = new Map<string, RpcInvocationHandler>();
@@ -101,42 +102,60 @@ export class RPCProtocolImpl implements RPCProtocol {
 
 export class PluginRpcMessageEncoder extends RpcMessageEncoder {
     protected override registerEncoders(): void {
-        super.registerEncoders();
-
-        this.registerEncoder(ObjectType.JSON, {
+        this.registerEncoder(ObjectType.Json, {
             is: value => value != null, // == null is handled by undefined encoder
             write: (buf, value) => {
                 const json = JSON.stringify(value, ObjectsTransferrer.replacer);
                 buf.writeString(json);
             }
-        }, true);
+        });
 
-        this.registerEncoder(ObjectType.URI, {
-            is: value => value instanceof URI,
-            write: (buf, value) => buf.writeString(value.toString())
-        }, true);
+        this.registerEncoder(ObjectType.Undefined, {
+            // eslint-disable-next-line no-null/no-null
+            is: value => value == null,
+            write: () => { }
+        });
 
-        this.registerEncoder(ObjectType.RANGE, {
-            is: value => value instanceof Range,
-            write: (buf, value: Range) => {
-                const range = value as Range;
-                const serializedValue = {
-                    start: {
-                        line: range.start.line,
-                        character: range.start.character
-                    },
-                    end: {
-                        line: range.end.line,
-                        character: range.end.character
-                    }
-                };
-                buf.writeString(JSON.stringify(serializedValue));
+        this.registerEncoder(ObjectType.Error, {
+            is: value => value instanceof Error,
+            write: (buf, value: Error) => buf.writeString(JSON.stringify(transformErrorForSerialization(value)))
+        });
+
+        this.registerEncoder(ObjectType.ResponseError, {
+            is: value => value instanceof ResponseError,
+            write: (buf, value) => buf.writeString(JSON.stringify(value))
+        });
+
+        this.registerEncoder(ObjectType.ByteArray, {
+            is: value => value instanceof Uint8Array,
+            write: (buf, value: Uint8Array) => {
+                /* When running in a nodejs context the received Uint8Array might be
+                a nodejs Buffer allocated from node's Buffer pool, which is not transferrable.
+                Therefore we use the `toArrayBuffer` utility method to retrieve the correct ArrayBuffer */
+                const arrayBuffer = toArrayBuffer(value);
+                buf.writeBytes(arrayBuffer);
             }
-        }, true);
+        });
 
-        this.registerEncoder(ObjectType.VSCODE_URI, {
-            is: value => VSCodeURI.isUri(value),
-            write: (buf, value: VSCodeURI) => buf.writeString(JSON.stringify(value))
+        this.registerEncoder(ObjectType.ArrayBuffer, {
+            is: value => value instanceof ArrayBuffer,
+            write: (buf, value: ArrayBuffer) => buf.writeBytes(value)
+        });
+
+        this.registerEncoder(ObjectType.ObjectArray, {
+            is: value => Array.isArray(value),
+            write: (buf, args: any[]) => {
+                const encodeSeparately = this.requiresSeparateEncoding(args);
+                buf.writeUint8(encodeSeparately ? 1 : 0);
+                if (!encodeSeparately) {
+                    this.writeTypedValue(buf, args, ObjectType.ObjectArray);
+                } else {
+                    buf.writeInteger(args.length);
+                    for (let i = 0; i < args.length; i++) {
+                        this.writeTypedValue(buf, args[i], ObjectType.ObjectArray);
+                    }
+                }
+            }
         });
 
     }
@@ -144,25 +163,51 @@ export class PluginRpcMessageEncoder extends RpcMessageEncoder {
 
 export class PluginRpcMessageDecoder extends RpcMessageDecoder {
     protected override registerDecoders(): void {
-        super.registerDecoders();
-        this.registerDecoder(ObjectType.JSON, {
+        this.registerDecoder(ObjectType.Json, {
             read: buf => JSON.parse(buf.readString(), ObjectsTransferrer.reviver)
-        }, true);
-        this.registerDecoder(ObjectType.URI, {
-            read: buf => new URI(buf.readString())
-        }, true);
+        });
+        this.registerDecoder(ObjectType.Undefined, {
+            read: () => undefined
+        });
 
-        this.registerDecoder(ObjectType.RANGE, {
+        this.registerDecoder(ObjectType.Error, {
             read: buf => {
-                const obj = JSON.parse(buf.readString());
-                const start = new Position(obj.start.line, obj.start.character);
-                const end = new Position(obj.end.line, obj.end.character);
-                return new Range(start, end);
+                const serializedError: SerializedError = JSON.parse(buf.readString());
+                const error = new Error(serializedError.message);
+                Object.assign(error, serializedError);
+                return error;
             }
-        }, true);
+        });
 
-        this.registerDecoder(ObjectType.VSCODE_URI, {
-            read: buf => VSCodeURI.parse(buf.readString())
+        this.registerDecoder(ObjectType.ResponseError, {
+            read: buf => {
+                const error = JSON.parse(buf.readString());
+                return new ResponseError(error.code, error.message, error.data);
+            }
+        });
+
+        this.registerDecoder(ObjectType.ByteArray, {
+            read: buf => new Uint8Array(buf.readBytes())
+        });
+
+        this.registerDecoder(ObjectType.ArrayBuffer, {
+            read: buf => buf.readBytes()
+        });
+
+        this.registerDecoder(ObjectType.ObjectArray, {
+            read: buf => {
+                const encodedSeparately = buf.readUint8() === 1;
+
+                if (!encodedSeparately) {
+                    return this.readTypedValue(buf);
+                }
+                const length = buf.readInteger();
+                const result = new Array(length);
+                for (let i = 0; i < length; i++) {
+                    result[i] = this.readTypedValue(buf);
+                }
+                return result;
+            }
         });
 
     }

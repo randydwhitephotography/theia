@@ -17,10 +17,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { ResponseError } from 'vscode-languageserver-protocol';
-import URI from '../uri';
 import { toArrayBuffer } from './array-buffer-message-buffer';
 import { getUintType, UintType, ReadBuffer, WriteBuffer } from './message-buffer';
-import { Range } from '../../../shared/vscode-languageserver-protocol';
 
 /**
  * This code lets you encode rpc protocol messages (request/reply/notification/error/cancel)
@@ -99,17 +97,14 @@ export function transformErrorForSerialization(error: Error): SerializedError {
  */
 
 export enum ObjectType {
-    JSON = 1,
+    Json = 1,
     ArrayBuffer = 2,
     ByteArray = 3,
-    UNDEFINED = 4,
+    Undefined = 4,
     ObjectArray = 5,
-    RESPONSE_ERROR = 6,
-    ERROR = 7,
     // eslint-disable-next-line @typescript-eslint/no-shadow
-    URI = 8,
-    VSCODE_URI = 9,
-    RANGE = 10
+    ResponseError = 6,
+    Error = 7,
 }
 
 /**
@@ -167,15 +162,15 @@ export class RpcMessageDecoder {
     }
 
     protected registerDecoders(): void {
-        this.registerDecoder(ObjectType.JSON, {
+        this.registerDecoder(ObjectType.Json, {
             read: buf => JSON.parse(buf.readString())
         });
 
-        this.registerDecoder(ObjectType.UNDEFINED, {
+        this.registerDecoder(ObjectType.Undefined, {
             read: () => undefined
         });
 
-        this.registerDecoder(ObjectType.ERROR, {
+        this.registerDecoder(ObjectType.Error, {
             read: buf => {
                 const serializedError: SerializedError = JSON.parse(buf.readString());
                 const error = new Error(serializedError.message);
@@ -184,7 +179,7 @@ export class RpcMessageDecoder {
             }
         });
 
-        this.registerDecoder(ObjectType.RESPONSE_ERROR, {
+        this.registerDecoder(ObjectType.ResponseError, {
             read: buf => {
                 const error = JSON.parse(buf.readString());
                 return new ResponseError(error.code, error.message, error.data);
@@ -214,14 +209,6 @@ export class RpcMessageDecoder {
                 return result;
             }
         });
-
-        this.registerDecoder(ObjectType.URI, {
-            read: buf => new URI(buf.readString())
-        });
-
-        this.registerDecoder(ObjectType.RANGE, {
-            read: buf => JSON.parse(buf.readString())
-        });
     }
 
     /**
@@ -230,10 +217,9 @@ export class RpcMessageDecoder {
      * by retrieving the highest tag value and calculating the required Uint size to store it.
      * @param tag the tag for which the decoder should be registered.
      * @param decoder the decoder that should be registered.
-     * @param overwrite flag to indicate wether an existing registration with the same tag should be overwritten with the new registration.
      */
-    registerDecoder(tag: number, decoder: ValueDecoder, overwrite = false): void {
-        if (!overwrite && this.decoders.has(tag)) {
+    registerDecoder(tag: number, decoder: ValueDecoder): void {
+        if (this.decoders.has(tag)) {
             throw new Error(`Decoder already registered: ${tag}`);
         }
         this.decoders.set(tag, decoder);
@@ -350,38 +336,27 @@ export class RpcMessageEncoder {
     }
 
     protected registerEncoders(): void {
-        // encoders will be consulted in reverse order of registration, so the JSON fallback needs to be last
-        this.registerEncoder(ObjectType.JSON, {
+        this.registerEncoder(ObjectType.Json, {
             is: () => true,
             write: (buf, value) => {
                 buf.writeString(JSON.stringify(value));
             }
         });
 
-        this.registerEncoder(ObjectType.UNDEFINED, {
+        this.registerEncoder(ObjectType.Undefined, {
             // eslint-disable-next-line no-null/no-null
             is: value => value == null,
             write: () => { }
         });
 
-        this.registerEncoder(ObjectType.ERROR, {
+        this.registerEncoder(ObjectType.Error, {
             is: value => value instanceof Error,
             write: (buf, value: Error) => buf.writeString(JSON.stringify(transformErrorForSerialization(value)))
         });
 
-        this.registerEncoder(ObjectType.RESPONSE_ERROR, {
+        this.registerEncoder(ObjectType.ResponseError, {
             is: value => value instanceof ResponseError,
             write: (buf, value) => buf.writeString(JSON.stringify(value))
-        });
-
-        this.registerEncoder(ObjectType.URI, {
-            is: value => value instanceof URI,
-            write: (buf, value) => buf.writeString(value.toString())
-        });
-
-        this.registerEncoder(ObjectType.RANGE, {
-            is: value => Range.is(value),
-            write: (buf, value: Range) => buf.writeString(JSON.stringify(value))
         });
 
         this.registerEncoder(ObjectType.ByteArray, {
@@ -423,10 +398,9 @@ export class RpcMessageEncoder {
      * by retrieving the highest tag value and calculating the required Uint size to store it.
      * @param tag the tag for which the encoder should be registered.
      * @param encoder the encoder that should be registered.
-     * @param overwrite to indicate wether an existing registration with the same tag should be overwritten with the new registration.
      */
-    registerEncoder<T>(tag: number, encoder: ValueEncoder, overwrite = false): void {
-        if (!overwrite && this.registeredTags.has(tag)) {
+    registerEncoder<T>(tag: number, encoder: ValueEncoder): void {
+        if (this.registeredTags.has(tag)) {
             throw new Error(`Tag already registered: ${tag}`);
         }
         this.registeredTags.add(tag);
