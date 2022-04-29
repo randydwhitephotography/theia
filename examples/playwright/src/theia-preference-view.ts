@@ -70,6 +70,9 @@ export enum TheiaPreferenceScope {
 export class TheiaPreferenceView extends TheiaView {
     public customTimeout?: number;
     protected modificationIndicator = '.theia-mod-item-modified';
+    protected optionSelectLabel = '.theia-select-component-label';
+    protected optionSelectDropdown = '.theia-select-component-dropdown';
+    protected optionSelectDropdownValue = '.theia-select-component-option-value';
 
     constructor(app: TheiaApp) {
         super(TheiaSettingsViewData, app);
@@ -138,12 +141,8 @@ export class TheiaPreferenceView extends TheiaView {
     }
 
     async getOptionsPreferenceById(preferenceId: string): Promise<string> {
-        const element = await this.findPreferenceEditorById(preferenceId, 'select');
-        return element.evaluate(e => {
-            const selectElement = (e as HTMLSelectElement);
-            const option = selectElement.options[selectElement.selectedIndex];
-            return option.text;
-        });
+        const element = await this.findPreferenceEditorById(preferenceId, this.optionSelectLabel);
+        return element.evaluate(e => e.textContent ?? '');
     }
 
     async setOptionsPreferenceByPath(sectionTitle: string, name: string, value: string): Promise<void> {
@@ -152,8 +151,10 @@ export class TheiaPreferenceView extends TheiaView {
     }
 
     async setOptionsPreferenceById(preferenceId: string, value: string): Promise<void> {
-        const element = await this.findPreferenceEditorById(preferenceId, 'select');
-        await element.selectOption({ label: value });
+        const element = await this.findPreferenceEditorById(preferenceId, this.optionSelectLabel);
+        await element.click();
+        const option = await this.page.waitForSelector(`${this.optionSelectDropdown} ${this.optionSelectDropdownValue}:has-text("${value}")`);
+        await option.click();
     }
 
     async resetPreferenceByPath(sectionTitle: string, name: string): Promise<void> {
