@@ -29,40 +29,60 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
     private decoder = new PluginRpcMessageDecoder();
 
     constructor(protected readonly id: string) {
+        console.log(`[TOBIAS]Created proxy for id: ${this.id}`);
     }
 
     listen(channel: Channel): void {
         const client = new RpcClient(channel, { decoder: this.decoder, encoder: this.encoder });
+        console.log(`[TOBIAS] Resolve channel promise for proxy with id: ${this.id}`);
         this.channelDeferred.resolve(client);
     }
 
-    get(target: any, name: string, receiver: any): any {
-        if (target[name] || name.charCodeAt(0) !== 36 /* CharCode.DollarSign */) {
-            return target[name];
+    get(target: any, method: string, receiver: any): any {
+        if (method.charCodeAt(0) !== 36) {
+            console.log(`[TOBIAS] Invoke proxy ${this.id} with : ${method}`);
+
         }
-        const isNotify = this.isNotification(name);
+        if (target[method] || method.charCodeAt(0) !== 36 /* CharCode.DollarSign */) {
+            return target[method];
+        }
+        const isNotify = this.isNotification(method);
         return (...args: any[]) => {
-            const method = name.toString();
-            return this.channelDeferred.promise.then((connection: RpcClient) =>
-                new Promise((resolve, reject) => {
-                    try {
-                        if (isNotify) {
-                            connection.sendNotification(method, args);
-                            resolve(undefined);
-                        } else {
-                            const resultPromise = connection.sendRequest(method, args) as Promise<any>;
-                            resultPromise.then((result: any) => {
-                                resolve(result);
-                            }).catch(e => {
-                                reject(e);
-                            });
-                        }
-                    } catch (err) {
-                        reject(err);
-                    }
-                })
-            );
+            const unresolved = this.channelDeferred.state === 'unresolved';
+            if (unresolved) {
+                console.log(`[TOBIAS] The channel for proxy ${this.id} ist not ready. The RPC call for ${method} should be invoked later`);
+            }
+            return this.createReturnPromise(method, args, isNotify);
         };
+    }
+
+    protected createReturnPromise(method: string, args: any[], isNotify: boolean): Promise<any> {
+        const unresolved = this.channelDeferred.state === 'unresolved';
+        return this.channelDeferred.promise.then((connection: RpcClient) =>
+            new Promise((resolve, reject) => {
+                try {
+                    if (isNotify) {
+                        if (unresolved) {
+                            console.log(`[TOBIAS] Deferred proxy notification call invoked for proxy: ${this.id} with method:  ${method}`);
+                        }
+                        connection.sendNotification(method, args);
+                        resolve(undefined);
+                    } else {
+                        if (unresolved) {
+                            console.log(`[TOBIAS] Deferred proxy request call invoked proxy: ${this.id} with method:  ${method}`);
+                        }
+                        const resultPromise = connection.sendRequest(method, args) as Promise<any>;
+                        resultPromise.then((result: any) => {
+                            resolve(result);
+                        }).catch(e => {
+                            reject(e);
+                        });
+                    }
+                } catch (err) {
+                    reject(err);
+                }
+            })
+        );
     }
 
     /**
