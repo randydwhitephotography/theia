@@ -84,17 +84,17 @@ test.describe('Preference View', () => {
 
         preferences.customTimeout = 500;
         try {
-            await expect(preferences.getBooleanPreferenceById('no.a.real.preference')).rejects.toThrowError();
-            await expect(preferences.setBooleanPreferenceById('no.a.real.preference', true)).rejects.toThrowError();
-            await expect(preferences.resetPreferenceById('no.a.real.preference')).rejects.toThrowError();
+            await expect(preferences.getBooleanPreferenceById('not.a.real.preference')).rejects.toThrowError();
+            await expect(preferences.setBooleanPreferenceById('not.a.real.preference', true)).rejects.toThrowError();
+            await expect(preferences.resetPreferenceById('not.a.real.preference')).rejects.toThrowError();
 
-            await expect(preferences.getStringPreferenceById('no.a.real.preference')).rejects.toThrowError();
-            await expect(preferences.setStringPreferenceById('no.a.real.preference', 'a')).rejects.toThrowError();
-            await expect(preferences.resetPreferenceById('no.a.real.preference')).rejects.toThrowError();
+            await expect(preferences.getStringPreferenceById('not.a.real.preference')).rejects.toThrowError();
+            await expect(preferences.setStringPreferenceById('not.a.real.preference', 'a')).rejects.toThrowError();
+            await expect(preferences.resetPreferenceById('not.a.real.preference')).rejects.toThrowError();
 
-            await expect(preferences.getOptionsPreferenceById('no.a.real.preference')).rejects.toThrowError();
-            await expect(preferences.setOptionsPreferenceById('no.a.real.preference', 'a')).rejects.toThrowError();
-            await expect(preferences.resetPreferenceById('no.a.real.preference')).rejects.toThrowError();
+            await expect(preferences.getOptionsPreferenceById('not.a.real.preference')).rejects.toThrowError();
+            await expect(preferences.setOptionsPreferenceById('not.a.real.preference', 'a')).rejects.toThrowError();
+            await expect(preferences.resetPreferenceById('not.a.real.preference')).rejects.toThrowError();
         } finally {
             preferences.customTimeout = undefined;
         }
