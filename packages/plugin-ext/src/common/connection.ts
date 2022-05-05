@@ -17,7 +17,7 @@ import { ConnectionExt, ConnectionMain } from './plugin-api-rpc';
 import { Emitter, Event } from '@theia/core/lib/common/event';
 import { ChannelCloseEvent, MessageProvider } from '@theia/core/lib/common/message-rpc/channel';
 import { WriteBuffer, Channel } from '@theia/core';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '@theia/core/lib/common/message-rpc/uint8-array-message-buffer';
 
 /**
  * A channel communicating with a counterpart in a plugin host.
@@ -32,9 +32,9 @@ export class PluginChannel implements Channel {
         protected readonly connection: ConnectionExt | ConnectionMain) { }
 
     getWriteBuffer(): WriteBuffer {
-        const result = new ArrayBufferWriteBuffer();
+        const result = new Uint8ArrayWriteBuffer();
         result.onCommit(buffer => {
-            this.connection.$sendMessage(this.id, new ArrayBufferReadBuffer(buffer).readString());
+            this.connection.$sendMessage(this.id, new Uint8ArrayReadBuffer(buffer).readString());
         });
 
         return result;
@@ -89,9 +89,9 @@ export class ConnectionImpl implements ConnectionMain, ConnectionExt {
      */
     async $sendMessage(id: string, message: string): Promise<void> {
         if (this.connections.has(id)) {
-            const writer = new ArrayBufferWriteBuffer();
+            const writer = new Uint8ArrayWriteBuffer();
             writer.writeString(message);
-            const reader = new ArrayBufferReadBuffer(writer.getCurrentContents());
+            const reader = new Uint8ArrayReadBuffer(writer.getCurrentContents());
             this.connections.get(id)!.fireMessageReceived(() => reader);
         } else {
             console.warn(`Received message for unknown connection: ${id}`);

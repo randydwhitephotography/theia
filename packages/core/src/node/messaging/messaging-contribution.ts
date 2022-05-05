@@ -26,8 +26,8 @@ import { ConnectionContainerModule } from './connection-container-module';
 import Route = require('route-parser');
 import { WsRequestValidator } from '../ws-request-validators';
 import { MessagingListener } from './messaging-listeners';
-import { toArrayBuffer } from '../../common/message-rpc/array-buffer-message-buffer';
-import { Channel, ChannelMultiplexer } from '../../common/message-rpc';
+import { Channel } from '../../common/message-rpc';
+import { ChannelMultiplexer } from '../../common/message-rpc/channel';
 
 export const MessagingContainer = Symbol('MessagingContainer');
 
@@ -149,7 +149,7 @@ function toIWebSocket(socket: Socket): IWebSocket {
         isConnected: () => socket.connected,
         onClose: cb => socket.on('disconnect', reason => cb(reason)),
         onError: cb => socket.on('error', error => cb(error)),
-        onMessage: cb => socket.on('message', data => cb(toArrayBuffer(data))),
+        onMessage: cb => socket.on('message', data => cb(data)),
         send: message => socket.emit('message', message)
     };
 }

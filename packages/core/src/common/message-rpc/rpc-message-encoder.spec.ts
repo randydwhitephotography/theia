@@ -14,13 +14,13 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 import { expect } from 'chai';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from './array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from './uint8-array-message-buffer';
 import { RpcMessageDecoder, RpcMessageEncoder } from './rpc-message-encoder';
 
 describe('message buffer test', () => {
     it('encode object', () => {
-        const buffer = new ArrayBuffer(1024);
-        const writer = new ArrayBufferWriteBuffer(buffer);
+        const buffer = new Uint8Array(1024);
+        const writer = new Uint8ArrayWriteBuffer(buffer);
 
         const encoder = new RpcMessageEncoder();
         const jsonMangled = JSON.parse(JSON.stringify(encoder));
@@ -29,7 +29,7 @@ describe('message buffer test', () => {
 
         const written = writer.getCurrentContents();
 
-        const reader = new ArrayBufferReadBuffer(written);
+        const reader = new Uint8ArrayReadBuffer(written);
 
         const decoder = new RpcMessageDecoder();
         const decoded = decoder.readTypedValue(reader);

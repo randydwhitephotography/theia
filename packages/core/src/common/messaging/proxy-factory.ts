@@ -21,7 +21,7 @@ import { ApplicationError } from '../application-error';
 import { Disposable } from '../disposable';
 import { Emitter, Event } from '../event';
 import { Channel } from '../message-rpc/channel';
-import { RequestHandler, RpcConnection } from '../message-rpc/rpc-protocol';
+import { RequestHandler, RpcProtocol } from '../message-rpc/rpc-protocol';
 import { ConnectionHandler } from './handler';
 
 export type JsonRpcServer<Client> = Disposable & {
@@ -57,9 +57,9 @@ export class JsonRpcConnectionHandler<T extends object> implements ConnectionHan
 /**
  * Factory for creating a new {@link RpcConnection} for a given chanel and {@link RequestHandler}.
  */
-export type RpcConnectionFactory = (channel: Channel, requestHandler: RequestHandler) => RpcConnection;
+export type RpcConnectionFactory = (channel: Channel, requestHandler: RequestHandler) => RpcProtocol;
 
-const defaultRPCConnectionFactory: RpcConnectionFactory = (channel, requestHandler) => new RpcConnection(channel, requestHandler);
+const defaultRPCConnectionFactory: RpcConnectionFactory = (channel, requestHandler) => new RpcProtocol(channel, requestHandler);
 
 /**
  * Factory for JSON-RPC proxy objects.
@@ -109,8 +109,8 @@ export class JsonRpcProxyFactory<T extends object> implements ProxyHandler<T> {
     protected readonly onDidOpenConnectionEmitter = new Emitter<void>();
     protected readonly onDidCloseConnectionEmitter = new Emitter<void>();
 
-    protected connectionPromiseResolve: (connection: RpcConnection) => void;
-    protected connectionPromise: Promise<RpcConnection>;
+    protected connectionPromiseResolve: (connection: RpcProtocol) => void;
+    protected connectionPromise: Promise<RpcProtocol>;
 
     /**
      * Build a new JsonRpcProxyFactory.

@@ -18,8 +18,8 @@ import * as http from 'http';
 import * as https from 'https';
 import { AddressInfo } from 'net';
 import { io, Socket } from 'socket.io-client';
-import { Channel, ChannelMultiplexer } from '../../../common';
-import { toArrayBuffer } from '../../../common/message-rpc/array-buffer-message-buffer';
+import { Channel } from '../../../common';
+import { ChannelMultiplexer } from '../../../common/message-rpc/channel';
 import { IWebSocket, WebSocketChannel } from '../../../common/messaging/web-socket-channel';
 export class TestWebSocketChannelSetup {
     public readonly multiPlexer: ChannelMultiplexer;
@@ -50,7 +50,7 @@ function toIWebSocket(socket: Socket): IWebSocket {
         isConnected: () => socket.connected,
         onClose: cb => socket.on('disconnect', reason => cb(reason)),
         onError: cb => socket.on('error', reason => cb(reason)),
-        onMessage: cb => socket.on('message', data => cb(toArrayBuffer(data))),
+        onMessage: cb => socket.on('message', data => cb(data)),
         send: message => socket.emit('message', message)
     };
 }

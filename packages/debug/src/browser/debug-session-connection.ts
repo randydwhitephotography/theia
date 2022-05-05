@@ -113,7 +113,6 @@ const standardDebugEvents = new Set<string>([
     'thread'
 ]);
 
-// TODO: Proper message RPC for debug session protocol
 export class DebugSessionConnection implements Disposable {
 
     private sequence = 1;

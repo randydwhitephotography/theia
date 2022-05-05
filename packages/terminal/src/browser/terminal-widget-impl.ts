@@ -22,7 +22,7 @@ import { nls } from '@theia/core/lib/common/nls';
 import { Deferred } from '@theia/core/lib/common/promise-util';
 import URI from '@theia/core/lib/common/uri';
 import { inject, injectable, named, postConstruct } from '@theia/core/shared/inversify';
-import { RequestHandler, RpcConnection } from '@theia/core/lib/common/message-rpc/rpc-protocol';
+import { RequestHandler, RpcProtocol } from '@theia/core/lib/common/message-rpc/rpc-protocol';
 import { CommandLineOptions, ShellCommandBuilder } from '@theia/process/lib/common/shell-command-builder';
 import { WorkspaceService } from '@theia/workspace/lib/browser';
 import { RendererType, Terminal } from 'xterm';
@@ -58,7 +58,7 @@ export class TerminalWidgetImpl extends TerminalWidget implements StatefulWidget
     protected searchBox: TerminalSearchWidget;
     protected restored = false;
     protected closeOnDispose = true;
-    protected waitForConnection: Deferred<RpcConnection> | undefined;
+    protected waitForConnection: Deferred<RpcProtocol> | undefined;
     protected hoverMessage: HTMLDivElement;
     protected lastTouchEnd: TouchEvent | undefined;
     protected isAttachedCloseListener: boolean = false;
@@ -507,13 +507,13 @@ export class TerminalWidgetImpl extends TerminalWidget implements StatefulWidget
         }
         this.toDisposeOnConnect.dispose();
         this.toDispose.push(this.toDisposeOnConnect);
-        const waitForConnection = this.waitForConnection = new Deferred<RpcConnection>();
+        const waitForConnection = this.waitForConnection = new Deferred<RpcProtocol>();
         this.webSocketConnectionProvider.listen({
             path: `${terminalsPath}/${this.terminalId}`,
             onConnection: connection => {
                 const requestHandler: RequestHandler = _method => this.logger.warn('Received an unhandled RPC request from the terminal process');
 
-                const rpc = new RpcConnection(connection, requestHandler);
+                const rpc = new RpcProtocol(connection, requestHandler);
                 rpc.onNotification(event => {
                     if (event.method === 'onData') {
                         this.write(event.args[0]);

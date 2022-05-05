@@ -59,16 +59,11 @@ export interface ChannelCloseEvent {
 
 /**
  * The `MessageProvider` is emitted when a channel receives a new message.
- * Listeners can read the provider to obtain a new {@link ReadBuffer} for the received message
+ * Listeners can invoke the provider to obtain a new {@link ReadBuffer} for the received message.
+ * This ensures that each listener has its own isolated {@link ReadBuffer} instance.
+ *
  */
 export type MessageProvider = () => ReadBuffer;
-
-export enum MessageTypes {
-    Open = 1,
-    Close = 2,
-    AckOpen = 3,
-    Data = 4
-}
 
 /**
  * Helper class to implement the single channels on a {@link ChannelMultiplexer}. Simply forwards write requests to
@@ -98,7 +93,7 @@ export class ForwardingChannel implements Channel {
         return this.writeBufferSource();
     }
 
-    send(message: ArrayBuffer): void {
+    send(message: Uint8Array): void {
         const writeBuffer = this.getWriteBuffer();
         writeBuffer.writeBytes(message);
         writeBuffer.commit();
@@ -107,6 +102,16 @@ export class ForwardingChannel implements Channel {
     close(): void {
         this.closeHandler();
     }
+}
+
+/**
+ * The different message types used in the messaging protocol of the {@link ChannelMultiplexer}
+ */
+export enum MessageTypes {
+    Open = 1,
+    Close = 2,
+    AckOpen = 3,
+    Data = 4
 }
 
 /**
@@ -159,7 +164,7 @@ export class ChannelMultiplexer {
                 return this.handleClose(id);
             }
             case MessageTypes.Data: {
-                return this.handleData(id, buffer.sliceAtCurrentPosition());
+                return this.handleData(id, buffer.sliceAtReadPosition());
             }
         }
     }

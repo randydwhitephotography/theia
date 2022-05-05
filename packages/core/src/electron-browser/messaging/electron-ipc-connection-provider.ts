@@ -17,7 +17,7 @@
 import { Event as ElectronEvent, ipcRenderer } from '@theia/electron/shared/electron';
 import { injectable, interfaces } from 'inversify';
 import { Emitter, Event } from '../../common';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '../../common/message-rpc/array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '../../common/message-rpc/uint8-array-message-buffer';
 import { Channel, MessageProvider } from '../../common/message-rpc/channel';
 import { JsonRpcProxy } from '../../common/messaging';
 import { AbstractConnectionProvider } from '../../common/messaging/abstract-connection-provider';
@@ -39,15 +39,15 @@ export class ElectronIpcConnectionProvider extends AbstractConnectionProvider<El
     protected createMainChannel(): Channel {
         const onMessageEmitter = new Emitter<MessageProvider>();
         ipcRenderer.on(THEIA_ELECTRON_IPC_CHANNEL_NAME, (_event: ElectronEvent, data: Uint8Array) => {
-            onMessageEmitter.fire(() => new ArrayBufferReadBuffer(data.buffer));
+            onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(data));
         });
         return {
             close: () => Event.None,
             getWriteBuffer: () => {
-                const writer = new ArrayBufferWriteBuffer();
+                const writer = new Uint8ArrayWriteBuffer();
                 writer.onCommit(buffer =>
                     // The ipcRenderer cannot handle ArrayBuffers directly=> we have to convert to Uint8Array.
-                    ipcRenderer.send(THEIA_ELECTRON_IPC_CHANNEL_NAME, new Uint8Array(buffer))
+                    ipcRenderer.send(THEIA_ELECTRON_IPC_CHANNEL_NAME, buffer)
                 );
                 return writer;
             },

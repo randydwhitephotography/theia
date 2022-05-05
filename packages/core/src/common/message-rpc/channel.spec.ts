@@ -15,7 +15,7 @@
 // *****************************************************************************
 import { assert, expect, spy, use } from 'chai';
 import * as spies from 'chai-spies';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from './array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from './uint8-array-message-buffer';
 import { ChannelMultiplexer, ForwardingChannel, MessageProvider } from './channel';
 
 use(spies);
@@ -25,16 +25,16 @@ use(spies);
  */
 export class ChannelPipe {
     readonly left: ForwardingChannel = new ForwardingChannel('left', () => this.right.onCloseEmitter.fire({ reason: 'Left channel has been closed' }), () => {
-        const leftWrite = new ArrayBufferWriteBuffer();
+        const leftWrite = new Uint8ArrayWriteBuffer();
         leftWrite.onCommit(buffer => {
-            this.right.onMessageEmitter.fire(() => new ArrayBufferReadBuffer(buffer));
+            this.right.onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(buffer));
         });
         return leftWrite;
     });
     readonly right: ForwardingChannel = new ForwardingChannel('right', () => this.left.onCloseEmitter.fire({ reason: 'Right channel has been closed' }), () => {
-        const rightWrite = new ArrayBufferWriteBuffer();
+        const rightWrite = new Uint8ArrayWriteBuffer();
         rightWrite.onCommit(buffer => {
-            this.left.onMessageEmitter.fire(() => new ArrayBufferReadBuffer(buffer));
+            this.left.onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(buffer));
         });
         return rightWrite;
     });

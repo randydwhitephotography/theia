@@ -19,7 +19,7 @@ import { ILogger, RequestHandler } from '@theia/core/lib/common';
 import { TerminalProcess, ProcessManager } from '@theia/process/lib/node';
 import { terminalsPath } from '../common/terminal-protocol';
 import { MessagingService } from '@theia/core/lib/node/messaging/messaging-service';
-import { RpcConnection } from '@theia/core/';
+import { RpcProtocol } from '@theia/core/';
 
 @injectable()
 export class TerminalBackendContribution implements MessagingService.Contribution {
@@ -31,7 +31,7 @@ export class TerminalBackendContribution implements MessagingService.Contributio
     protected readonly logger: ILogger;
 
     configure(service: MessagingService): void {
-        service.wsChannel(`${terminalsPath}/:id`, (params: { id: string }, connection) => {
+        service.wsChannel(`${terminalsPath}/:id`, (params: { id: string }, channel) => {
             const id = parseInt(params.id, 10);
             const termProcess = this.processManager.get(id);
             if (termProcess instanceof TerminalProcess) {
@@ -46,11 +46,11 @@ export class TerminalBackendContribution implements MessagingService.Contributio
                     }
                 };
 
-                const rpc = new RpcConnection(connection, requestHandler);
+                const rpc = new RpcProtocol(channel, requestHandler);
                 output.on('data', data => {
                     rpc.sendNotification('onData', [data]);
                 });
-                connection.onClose(() => output.dispose());
+                channel.onClose(() => output.dispose());
             }
         });
     }

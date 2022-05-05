@@ -18,7 +18,7 @@ import { ipcMain, IpcMainEvent, WebContents } from '@theia/electron/shared/elect
 import { inject, injectable, named, postConstruct } from 'inversify';
 import { Emitter, Event, WriteBuffer } from '../../common';
 import { ContributionProvider } from '../../common/contribution-provider';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '../../common/message-rpc/array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '../../common/message-rpc/uint8-array-message-buffer';
 import { Channel, ChannelCloseEvent, ChannelMultiplexer, MessageProvider } from '../../common/message-rpc/channel';
 import { ElectronConnectionHandler, THEIA_ELECTRON_IPC_CHANNEL_NAME } from '../../electron-common/messaging/electron-connection-handler';
 import { MessagingContribution } from '../../node/messaging/messaging-contribution';
@@ -56,28 +56,32 @@ export class ElectronMessagingContribution implements ElectronMainApplicationCon
 
     protected handleIpcEvent(event: IpcMainEvent, data: Uint8Array): void {
         const sender = event.sender;
+        // Get the multiplexer for a given window id
         try {
-            // Get the multiplexer for a given window id
-            const windowChannelData = this.windowChannelMultiplexer.get(sender.id)!;
-            if (!windowChannelData) {
-                const mainChannel = this.createWindowMainChannel(sender);
-                const multiPlexer = new ChannelMultiplexer(mainChannel);
-                multiPlexer.onDidOpenChannel(openEvent => {
-                    const { channel, id } = openEvent;
-                    if (this.channelHandlers.route(id, channel)) {
-                        console.debug(`Opening channel for service path '${id}'.`);
-                        channel.onClose(() => console.debug(`Closing channel on service path '${id}'.`));
-                    }
-                });
-
-                sender.once('did-navigate', () => multiPlexer.closeUnderlyingChannel({ reason: 'Window was refreshed' })); // When refreshing the browser window.
-                sender.once('destroyed', () => multiPlexer.closeUnderlyingChannel({ reason: 'Window was closed' })); // When closing the browser window.
-                this.windowChannelMultiplexer.set(sender.id, { channel: mainChannel, multiPlexer });
-            }
-            windowChannelData.channel.onMessageEmitter.fire(() => new ArrayBufferReadBuffer(data.buffer));
+            const windowChannelData = this.windowChannelMultiplexer.get(sender.id) ?? this.createWindowChannelData(sender);
+            windowChannelData!.channel.onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(data));
         } catch (error) {
             console.error('IPC: Failed to handle message', { error, data });
         }
+    }
+
+    // Creates a new multiplexer for a given sender/window
+    protected createWindowChannelData(sender: Electron.WebContents): { channel: ElectronWebContentChannel, multiPlexer: ChannelMultiplexer } {
+        const mainChannel = this.createWindowMainChannel(sender);
+        const multiPlexer = new ChannelMultiplexer(mainChannel);
+        multiPlexer.onDidOpenChannel(openEvent => {
+            const { channel, id } = openEvent;
+            if (this.channelHandlers.route(id, channel)) {
+                console.debug(`Opening channel for service path '${id}'.`);
+                channel.onClose(() => console.debug(`Closing channel on service path '${id}'.`));
+            }
+        });
+
+        sender.once('did-navigate', () => multiPlexer.closeUnderlyingChannel({ reason: 'Window was refreshed' })); // When refreshing the browser window.
+        sender.once('destroyed', () => multiPlexer.closeUnderlyingChannel({ reason: 'Window was closed' })); // When closing the browser window.
+        const data = { channel: mainChannel, multiPlexer };
+        this.windowChannelMultiplexer.set(sender.id, data);
+        return data;
     }
 
     /**
@@ -130,16 +134,19 @@ export class ElectronWebContentChannel implements Channel {
     }
 
     getWriteBuffer(): WriteBuffer {
-        const writer = new ArrayBufferWriteBuffer();
+        const writer = new Uint8ArrayWriteBuffer();
 
         writer.onCommit(buffer => {
             if (!this.sender.isDestroyed()) {
-                this.sender.send(THEIA_ELECTRON_IPC_CHANNEL_NAME, new Uint8Array(buffer));
+                this.sender.send(THEIA_ELECTRON_IPC_CHANNEL_NAME, buffer);
             }
         });
 
         return writer;
     }
     close(): void {
+        this.onCloseEmitter.dispose();
+        this.onMessageEmitter.dispose();
+        this.onErrorEmitter.dispose();
     }
 }

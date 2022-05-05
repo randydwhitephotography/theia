@@ -20,7 +20,7 @@ import * as path from 'path';
 import { Writable } from 'stream';
 import { Message } from 'vscode-ws-jsonrpc';
 import { ConnectionErrorHandler, Disposable, DisposableCollection, Emitter, ILogger } from '../../common';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '../../common/message-rpc/array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '../../common/message-rpc/uint8-array-message-buffer';
 import { Channel, ChannelCloseEvent, MessageProvider } from '../../common/message-rpc/channel';
 import { createIpcEnv } from './ipc-protocol';
 
@@ -85,7 +85,7 @@ export class IPCConnectionProvider {
         const pipe = childProcess.stdio[4] as Writable;
 
         pipe.on('data', (data: Uint8Array) => {
-            onMessageEmitter.fire(() => new ArrayBufferReadBuffer(data.buffer));
+            onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(data));
         });
 
         childProcess.on('error', err => onErrorEmitter.fire(err));
@@ -97,9 +97,9 @@ export class IPCConnectionProvider {
             onError: onErrorEmitter.event,
             onMessage: onMessageEmitter.event,
             getWriteBuffer: () => {
-                const result = new ArrayBufferWriteBuffer();
+                const result = new Uint8ArrayWriteBuffer();
                 result.onCommit(buffer => {
-                    pipe.write(new Uint8Array(buffer));
+                    pipe.write(buffer);
                 });
 
                 return result;

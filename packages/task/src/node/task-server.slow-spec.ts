@@ -31,7 +31,7 @@ import { ProcessTaskConfiguration, ProcessType } from '../common/process/task-pr
 import { createTaskTestContainer } from './test/task-test-container';
 import { TestWebSocketChannelSetup } from '@theia/core/lib/node/messaging/test/test-web-socket-channel';
 import { terminalsPath } from '@theia/terminal/lib/common/terminal-protocol';
-import { RpcConnection } from '@theia/core';
+import { RpcProtocol } from '@theia/core';
 
 // test scripts that we bundle with tasks
 const commandShortRunning = './task';
@@ -110,7 +110,7 @@ describe('Task server / back-end', function (): void {
             const setup = new TestWebSocketChannelSetup({ server, path: `${terminalsPath}/${terminalId}` });
             setup.multiPlexer.onDidOpenChannel(event => {
                 const channel = event.channel;
-                const connection = new RpcConnection(channel, (method, args) => {
+                const connection = new RpcProtocol(channel, (method, args) => {
                     reject(`Received unexpected request: ${method} with args: ${args} `);
                     return Promise.reject();
                 });

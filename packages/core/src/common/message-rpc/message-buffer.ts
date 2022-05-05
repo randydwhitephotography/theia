@@ -22,13 +22,8 @@ export interface WriteBuffer {
     writeUint16(value: number): WriteBuffer
     writeUint32(value: number): WriteBuffer;
     writeString(value: string): WriteBuffer;
-    writeBytes(value: ArrayBuffer): WriteBuffer;
-    /**
-     * Writes a number as integer value.The best suited encoding format(Uint8 Uint16 or Uint32) is
-     * computed automatically and encoded as the first byte. Mainly used to persist length values of
-     * strings and arrays.
-     */
-    writeInteger(value: number): WriteBuffer
+    writeBytes(value: Uint8Array): WriteBuffer;
+    writeLength(value: number): WriteBuffer
     /**
      * Makes any writes to the buffer permanent, for example by sending the writes over a channel.
      * You must obtain a new write buffer after committing
@@ -55,8 +50,8 @@ export class ForwardingWriteBuffer implements WriteBuffer {
         return this;
     }
 
-    writeInteger(value: number): WriteBuffer {
-        this.underlying.writeInteger(value);
+    writeLength(value: number): WriteBuffer {
+        this.underlying.writeLength(value);
         return this;
     }
 
@@ -65,7 +60,7 @@ export class ForwardingWriteBuffer implements WriteBuffer {
         return this;
     }
 
-    writeBytes(value: ArrayBuffer): WriteBuffer {
+    writeBytes(value: Uint8Array): WriteBuffer {
         this.underlying.writeBytes(value);
         return this;
     }
@@ -73,31 +68,6 @@ export class ForwardingWriteBuffer implements WriteBuffer {
     commit(): void {
         this.underlying.commit();
     }
-}
-
-export enum UintType {
-    Uint8 = 1,
-    Uint16 = 2,
-    Uint32 = 3
-}
-
-/**
- * Checks wether the given number is an unsigned integer and returns the {@link UintType}
- * that is needed to store it in binary format.
- * @param value The number for which the UintType should be retrieved.
- * @returns the corresponding UInt type.
- * @throws An error if the given number is not an unsigned integer.
- */
-export function getUintType(value: number): UintType {
-    if (value < 0 || (value % 1) !== 0) {
-        throw new Error(`Could not determine IntType. ${value} is not an unsigned integer`);
-    }
-    if (value <= 255) {
-        return UintType.Uint8;
-    } else if (value <= 65535) {
-        return UintType.Uint16;
-    }
-    return UintType.Uint32;
 }
 
 /**
@@ -109,16 +79,15 @@ export interface ReadBuffer {
     readUint16(): number;
     readUint32(): number;
     readString(): string;
-    readBytes(): ArrayBuffer;
+    readNumber(): number,
+    readLength(): number,
+    readBytes(): Uint8Array;
 
     /**
-     * Reads a number as int value. The encoding format(Uint8, Uint16, or Uint32) is expected to be
-     * encoded in the first byte.
+     * Returns a new read buffer  whose starting read position is the current read position of this buffer.
+     * This is useful to create read buffers sub messages.
+     * (e.g. when using a multiplexer the beginning of the message might contain some protocol overhead which should not be part
+     * of the message reader that is sent to the target channel)
      */
-    readInteger(): number
-    /**
-     * Returns a new read buffer whose starting read position is the current read position of this buffer.
-     * Can be used to read (sub) messages multiple times.
-     */
-    sliceAtCurrentPosition(): ReadBuffer
+    sliceAtReadPosition(): ReadBuffer
 }

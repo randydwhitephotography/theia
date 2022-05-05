@@ -18,7 +18,7 @@
 
 import { Emitter, Event } from '../event';
 import { WriteBuffer } from '../message-rpc';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '../message-rpc/array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '../message-rpc/uint8-array-message-buffer';
 import { Channel, MessageProvider, ChannelCloseEvent } from '../message-rpc/channel';
 
 /**
@@ -47,11 +47,17 @@ export class WebSocketChannel implements Channel {
     constructor(protected readonly socket: IWebSocket) {
         socket.onClose((reason, code) => this.onCloseEmitter.fire({ reason, code }));
         socket.onError(error => this.onErrorEmitter.fire(error));
-        socket.onMessage(buffer => this.onMessageEmitter.fire(() => new ArrayBufferReadBuffer(buffer)));
+        // eslint-disable-next-line arrow-body-style
+        socket.onMessage(data => this.onMessageEmitter.fire(() => {
+            // In the browser context socketIO receives binary messages as ArrayBuffers.
+            // So we have to convert them to a Uint8Array before delegating the message to the read buffer.
+            const buffer = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+            return new Uint8ArrayReadBuffer(buffer);
+        }));
     }
 
     getWriteBuffer(): WriteBuffer {
-        const result = new ArrayBufferWriteBuffer();
+        const result = new Uint8ArrayWriteBuffer();
 
         result.onCommit(buffer => {
             if (this.socket.isConnected()) {
@@ -79,7 +85,7 @@ export interface IWebSocket {
      * Sends the given message over the web socket in binary format.
      * @param message The binary message.
      */
-    send(message: ArrayBuffer): void;
+    send(message: Uint8Array): void;
     /**
      * Closes the websocket from the local side.
      */
@@ -92,7 +98,7 @@ export interface IWebSocket {
      * Listener callback to handle incoming messages.
      * @param cb The callback.
      */
-    onMessage(cb: (message: ArrayBuffer) => void): void;
+    onMessage(cb: (message: Uint8Array) => void): void;
     /**
      * Listener callback to handle socket errors.
      * @param cb The callback.

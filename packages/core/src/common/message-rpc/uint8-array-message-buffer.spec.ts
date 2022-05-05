@@ -14,12 +14,12 @@
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
 import { expect } from 'chai';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from './array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from './uint8-array-message-buffer';
 
 describe('array message buffer tests', () => {
     it('basic read write test', () => {
-        const buffer = new ArrayBuffer(1024);
-        const writer = new ArrayBufferWriteBuffer(buffer);
+        const buffer = new Uint8Array(1024);
+        const writer = new Uint8ArrayWriteBuffer(buffer);
 
         writer.writeUint8(8);
         writer.writeUint32(10000);
@@ -30,7 +30,7 @@ describe('array message buffer tests', () => {
 
         const written = writer.getCurrentContents();
 
-        const reader = new ArrayBufferReadBuffer(written);
+        const reader = new Uint8ArrayReadBuffer(written);
 
         expect(reader.readUint8()).equal(8);
         expect(reader.readUint32()).equal(10000);

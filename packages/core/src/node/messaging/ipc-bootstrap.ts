@@ -17,7 +17,7 @@
 import { Socket } from 'net';
 import 'reflect-metadata';
 import { Emitter } from '../../common';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '../../common/message-rpc/array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '../../common/message-rpc/uint8-array-message-buffer';
 import { Channel, ChannelCloseEvent, MessageProvider } from '../../common/message-rpc/channel';
 import { dynamicRequire } from '../dynamic-require';
 import { checkParentAlive, IPCEntryPoint } from './ipc-protocol';
@@ -40,7 +40,7 @@ function createChannel(): Channel {
     eventEmitter.on('error', error => onErrorEmitter.fire(error));
     eventEmitter.on('close', () => onCloseEmitter.fire({ reason: 'Process has been closed from remote site (parent)' }));
     pipe.on('data', (data: Uint8Array) => {
-        onMessageEmitter.fire(() => new ArrayBufferReadBuffer(data.buffer));
+        onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(data));
     });
 
     return {
@@ -49,9 +49,9 @@ function createChannel(): Channel {
         onError: onErrorEmitter.event,
         onMessage: onMessageEmitter.event,
         getWriteBuffer: () => {
-            const result = new ArrayBufferWriteBuffer();
+            const result = new Uint8ArrayWriteBuffer();
             result.onCommit(buffer => {
-                pipe.write(new Uint8Array(buffer));
+                pipe.write(buffer);
             });
 
             return result;

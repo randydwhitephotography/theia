@@ -13,12 +13,10 @@
 //
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
-// partly based on https://github.com/microsoft/vscode/blob/435f8a4cae52fc9850766af92d5df3c492f59341/src/vs/workbench/services/extensions/common/rpcProtocol.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { ResponseError } from 'vscode-languageserver-protocol';
-import { toArrayBuffer } from './array-buffer-message-buffer';
-import { getUintType, UintType, ReadBuffer, WriteBuffer } from './message-buffer';
+import { ReadBuffer, WriteBuffer } from './message-buffer';
 
 /**
  * This code lets you encode rpc protocol messages (request/reply/notification/error/cancel)
@@ -76,34 +74,18 @@ export interface SerializedError {
     readonly stack: string;
 }
 
-export function transformErrorForSerialization(error: Error): SerializedError {
-    if (error instanceof Error) {
-        const { name, message } = error;
-        const stack: string = (<any>error).stacktrace || error.stack;
-        return {
-            $isError: true,
-            name,
-            message,
-            stack
-        };
-    }
-
-    // return as is
-    return error;
-}
-
 /**
  * The tag values for the default {@link ValueEncoder}s & {@link ValueDecoder}s
  */
 
 export enum ObjectType {
-    JSON = 1,
-    ArrayBuffer = 2,
-    ByteArray = 3,
-    UNDEFINED = 4,
-    ObjectArray = 5,
-    RESPONSE_ERROR = 6,
-    ERROR = 7
+    Json = 1,
+    ByteArray = 2,
+    Undefined = 3,
+    ObjectArray = 4,
+    // eslint-disable-next-line @typescript-eslint/no-shadow
+    ResponseError = 5,
+    Error = 6
 
 }
 
@@ -151,22 +133,17 @@ export interface ValueDecoder {
 export class RpcMessageDecoder {
 
     protected decoders: Map<number, ValueDecoder> = new Map();
-    /**
-     * Declares the Uint8 type (i.e. the amount of bytes) necessary to store a decoder tag
-     * value in the buffer.
-     */
-    protected tagIntType: UintType;
 
     constructor() {
-        this.registerDecoder(ObjectType.JSON, {
+        this.registerDecoder(ObjectType.Json, {
             read: buf => JSON.parse(buf.readString())
         });
 
-        this.registerDecoder(ObjectType.UNDEFINED, {
+        this.registerDecoder(ObjectType.Undefined, {
             read: () => undefined
         });
 
-        this.registerDecoder(ObjectType.ERROR, {
+        this.registerDecoder(ObjectType.Error, {
             read: buf => {
                 const serializedError: SerializedError = JSON.parse(buf.readString());
                 const error = new Error(serializedError.message);
@@ -175,7 +152,7 @@ export class RpcMessageDecoder {
             }
         });
 
-        this.registerDecoder(ObjectType.RESPONSE_ERROR, {
+        this.registerDecoder(ObjectType.ResponseError, {
             read: buf => {
                 const error = JSON.parse(buf.readString());
                 return new ResponseError(error.code, error.message, error.data);
@@ -183,10 +160,6 @@ export class RpcMessageDecoder {
         });
 
         this.registerDecoder(ObjectType.ByteArray, {
-            read: buf => new Uint8Array(buf.readBytes())
-        });
-
-        this.registerDecoder(ObjectType.ArrayBuffer, {
             read: buf => buf.readBytes()
         });
 
@@ -197,7 +170,7 @@ export class RpcMessageDecoder {
                 if (!encodedSeparately) {
                     return this.readTypedValue(buf);
                 }
-                const length = buf.readInteger();
+                const length = buf.readLength();
                 const result = new Array(length);
                 for (let i = 0; i < length; i++) {
                     result[i] = this.readTypedValue(buf);
@@ -219,8 +192,6 @@ export class RpcMessageDecoder {
             throw new Error(`Decoder already registered: ${tag}`);
         }
         this.decoders.set(tag, decoder);
-        const maxTagId = Array.from(this.decoders.keys()).sort().reverse()[0];
-        this.tagIntType = getUintType(maxTagId);
     }
 
     readTypedValue(buf: ReadBuffer): any {
@@ -267,10 +238,7 @@ export class RpcMessageDecoder {
     protected parseRequest(msg: ReadBuffer): RequestMessage {
         const callId = msg.readUint32();
         const method = msg.readString();
-        let args = this.readTypedValue(msg) as any[];
-        // convert `null` to `undefined`, since we don't use `null` in internal plugin APIs
-        args = args.map(arg => arg === null ? undefined : arg); // eslint-disable-line no-null/no-null
-
+        const args = this.readTypedValue(msg) as any[];
         return {
             type: RpcMessageType.Request,
             id: callId,
@@ -325,7 +293,6 @@ export class RpcMessageEncoder {
 
     protected readonly encoders: [number, ValueEncoder][] = [];
     protected readonly registeredTags: Set<number> = new Set();
-    protected tagIntType: UintType;
 
     constructor() {
         this.registerEncoders();
@@ -333,25 +300,35 @@ export class RpcMessageEncoder {
 
     protected registerEncoders(): void {
         // encoders will be consulted in reverse order of registration, so the JSON fallback needs to be last
-        this.registerEncoder(ObjectType.JSON, {
+        this.registerEncoder(ObjectType.Json, {
             is: () => true,
             write: (buf, value) => {
                 buf.writeString(JSON.stringify(value));
             }
         });
 
-        this.registerEncoder(ObjectType.UNDEFINED, {
+        this.registerEncoder(ObjectType.Undefined, {
             // eslint-disable-next-line no-null/no-null
             is: value => value == null,
             write: () => { }
         });
 
-        this.registerEncoder(ObjectType.ERROR, {
+        this.registerEncoder(ObjectType.Error, {
             is: value => value instanceof Error,
-            write: (buf, value: Error) => buf.writeString(JSON.stringify(transformErrorForSerialization(value)))
+            write: (buf, error: Error) => {
+                const { name, message } = error;
+                const stack: string = (<any>error).stacktrace || error.stack;
+                const serializedError = {
+                    $isError: true,
+                    name,
+                    message,
+                    stack
+                };
+                buf.writeString(JSON.stringify(serializedError));
+            }
         });
 
-        this.registerEncoder(ObjectType.RESPONSE_ERROR, {
+        this.registerEncoder(ObjectType.ResponseError, {
             is: value => value instanceof ResponseError,
             write: (buf, value) => buf.writeString(JSON.stringify(value))
         });
@@ -359,19 +336,9 @@ export class RpcMessageEncoder {
         this.registerEncoder(ObjectType.ByteArray, {
             is: value => value instanceof Uint8Array,
             write: (buf, value: Uint8Array) => {
-                /* When running in a nodejs context the received Uint8Array might be
-                a nodejs Buffer allocated from node's Buffer pool, which is not transferrable.
-                Therefore we use the `toArrayBuffer` utility method to retrieve the correct ArrayBuffer */
-                const arrayBuffer = toArrayBuffer(value);
-                buf.writeBytes(arrayBuffer);
+                buf.writeBytes(value);
             }
         });
-
-        this.registerEncoder(ObjectType.ArrayBuffer, {
-            is: value => value instanceof ArrayBuffer,
-            write: (buf, value: ArrayBuffer) => buf.writeBytes(value)
-        });
-
         this.registerEncoder(ObjectType.ObjectArray, {
             is: value => Array.isArray(value),
             write: (buf, args: any[]) => {
@@ -380,7 +347,7 @@ export class RpcMessageEncoder {
                 if (!encodeSeparately) {
                     this.writeTypedValue(buf, args, ObjectType.ObjectArray);
                 } else {
-                    buf.writeInteger(args.length);
+                    buf.writeLength(args.length);
                     for (let i = 0; i < args.length; i++) {
                         this.writeTypedValue(buf, args[i], ObjectType.ObjectArray);
                     }
@@ -402,8 +369,6 @@ export class RpcMessageEncoder {
         }
         this.registeredTags.add(tag);
         this.encoders.push([tag, encoder]);
-        const maxTagId = this.encoders.map(value => value[0]).sort().reverse()[0];
-        this.tagIntType = getUintType(maxTagId);
     }
 
     /**
@@ -415,7 +380,7 @@ export class RpcMessageEncoder {
      * @returns `true` if the arguments require separate encoding, `false` otherwise.
      */
     protected requiresSeparateEncoding(args: any[]): boolean {
-        return args.find(arg => arg instanceof Uint8Array || arg instanceof ArrayBuffer) !== undefined;
+        return args.find(arg => arg instanceof Uint8Array) !== undefined;
     }
 
     writeString(buf: WriteBuffer, value: string): void {
