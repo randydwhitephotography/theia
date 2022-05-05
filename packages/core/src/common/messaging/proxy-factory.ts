@@ -16,7 +16,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { ResponseError } from 'vscode-ws-jsonrpc';
+import { ResponseError } from '../../../shared/vscode-languageserver-protocol';
 import { ApplicationError } from '../application-error';
 import { Disposable } from '../disposable';
 import { Emitter, Event } from '../event';

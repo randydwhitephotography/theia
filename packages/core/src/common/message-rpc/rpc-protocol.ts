@@ -20,6 +20,7 @@ import { Emitter, Event } from '../event';
 import { Deferred } from '../promise-util';
 import { Channel } from './channel';
 import { RpcMessage, RpcMessageDecoder, RpcMessageEncoder, RpcMessageType } from './rpc-message-encoder';
+import { Uint8ArrayWriteBuffer } from './uint8-array-message-buffer';
 
 /**
  * Handles request messages received by the {@link RpcServer}.
@@ -191,11 +192,18 @@ export class RpcProtocol {
             const result = await this.requestHandler(method, args);
             this.cancellationTokenSources.delete(id);
             this.encoder.replyOK(output, id, result);
+            output.commit();
         } catch (err) {
+            // In case of an error the output buffer might already contains parts of an message.
+            // => Dispose the current buffer and retrieve a new, clean one for writing the response error.
+            if (output instanceof Uint8ArrayWriteBuffer) {
+                output.dispose();
+            }
+            const errorOutput = this.channel.getWriteBuffer();
             this.cancellationTokenSources.delete(id);
-            this.encoder.replyErr(output, id, err);
+            this.encoder.replyErr(errorOutput, id, err);
+            errorOutput.commit();
         }
-        output.commit();
     }
 
     protected async handleNotify(id: number, method: string, args: any[]): Promise<void> {

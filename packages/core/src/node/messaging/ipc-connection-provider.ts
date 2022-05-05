@@ -18,7 +18,7 @@ import * as cp from 'child_process';
 import { inject, injectable } from 'inversify';
 import * as path from 'path';
 import { Writable } from 'stream';
-import { Message } from 'vscode-ws-jsonrpc';
+import { Message } from '../../../shared/vscode-languageserver-protocol';
 import { ConnectionErrorHandler, Disposable, DisposableCollection, Emitter, ILogger } from '../../common';
 import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '../../common/message-rpc/uint8-array-message-buffer';
 import { Channel, ChannelCloseEvent, MessageProvider } from '../../common/message-rpc/channel';

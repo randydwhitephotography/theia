@@ -156,7 +156,7 @@ export class Uint8ArrayReadBuffer implements ReadBuffer {
     }
 
     readUint32(): number {
-        const result = this.msg.getInt32(this.offset);
+        const result = this.msg.getUint32(this.offset);
         this.offset += 4;
         return result;
     }

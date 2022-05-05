@@ -34,7 +34,7 @@ describe('array message buffer tests', () => {
 
         expect(reader.readUint8()).equal(8);
         expect(reader.readUint32()).equal(10000);
-        expect(reader.readBytes()).deep.equal(new Uint8Array([1, 2, 3, 4]).buffer);
+        expect(reader.readBytes()).deep.equal(new Uint8Array([1, 2, 3, 4]));
         expect(reader.readString()).equal('this is a string');
         expect(reader.readString()).equal('another string');
     });

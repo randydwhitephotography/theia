@@ -20,9 +20,10 @@
 export interface WriteBuffer {
     writeUint8(byte: number): WriteBuffer
     writeUint16(value: number): WriteBuffer
-    writeUint32(value: number): WriteBuffer;
-    writeString(value: string): WriteBuffer;
-    writeBytes(value: Uint8Array): WriteBuffer;
+    writeUint32(value: number): WriteBuffer
+    writeString(value: string): WriteBuffer
+    writeBytes(value: Uint8Array): WriteBuffer
+    writeNumber(value: number): WriteBuffer
     writeLength(value: number): WriteBuffer
     /**
      * Makes any writes to the buffer permanent, for example by sending the writes over a channel.
@@ -62,6 +63,11 @@ export class ForwardingWriteBuffer implements WriteBuffer {
 
     writeBytes(value: Uint8Array): WriteBuffer {
         this.underlying.writeBytes(value);
+        return this;
+    }
+
+    writeNumber(value: number): WriteBuffer {
+        this.underlying.writeNumber(value);
         return this;
     }
 
