@@ -30,19 +30,28 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
     private channelDeferred: Deferred<RpcProtocol> = new Deferred();
 
     constructor(protected readonly id: string, protected readonly parser: RpcMessageParser) {
+        console.log(`[TOBIAS]Created proxy for id: ${this.id}`);
     }
 
     listen(channel: Channel): void {
         const clientOptions: RpcProtocolOptions = { ...this.parser, mode: 'clientOnly' };
         const client = new RpcProtocol(channel, undefined, clientOptions);
+        console.log(`[TOBIAS] Resolve channel promise for proxy with id: ${this.id}`);
         this.channelDeferred.resolve(client);
     }
 
     get(target: any, name: string, receiver: any): any {
+        if (name.charCodeAt(0) !== 36) {
+            console.log(`[TOBIAS] Invoke proxy ${this.id} with : ${name}`);
+        }
         if (target[name] || name.charCodeAt(0) !== 36 /* CharCode.DollarSign */) {
             return target[name];
         }
         const isNotify = this.isNotification(name);
+        const unresolved = this.channelDeferred.state === 'unresolved';
+        if (unresolved) {
+            console.log(`[TOBIAS] The channel for proxy ${this.id} ist not ready. The RPC call for ${name} should be invoked later`);
+        }
         return (...args: any[]) => {
             const method = name.toString();
             return this.channelDeferred.promise.then((connection: RpcProtocol) =>
@@ -52,6 +61,9 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
                             connection.sendNotification(method, args);
                             resolve(undefined);
                         } else {
+                            if (unresolved) {
+                                console.log(`[TOBIAS] Deferred proxy request call invoked proxy: ${this.id} with method:  ${method}`);
+                            }
                             const resultPromise = connection.sendRequest(method, args) as Promise<any>;
                             resultPromise.then((result: any) => {
                                 resolve(result);
