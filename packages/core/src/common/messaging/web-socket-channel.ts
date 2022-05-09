@@ -62,6 +62,8 @@ export class WebSocketChannel implements Channel {
         result.onCommit(buffer => {
             if (this.socket.isConnected()) {
                 this.socket.send(buffer);
+            } else {
+                throw new Error('Could not send message because the socket is not connected');
             }
         });
 

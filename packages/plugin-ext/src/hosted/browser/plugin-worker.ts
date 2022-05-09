@@ -15,9 +15,8 @@
 // *****************************************************************************
 import { injectable } from '@theia/core/shared/inversify';
 import { Emitter } from '@theia/core/lib/common/event';
-import { RPCProtocol } from '../../common/rpc-protocol';
-import { RPCProtocolImpl } from '../../common/rpc-protocol';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { RPCProtocol, RPCProtocolImpl } from '../../common/rpc-protocol';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '@theia/core/lib/common/message-rpc/uint8-array-message-buffer';
 import { ChannelCloseEvent, MessageProvider } from '@theia/core/lib/common/message-rpc';
 
 @injectable()
@@ -44,7 +43,7 @@ export class PluginWorker {
 
         // eslint-disable-next-line arrow-body-style
         this.worker.onmessage = buffer => onMessageEmitter.fire(() => {
-            return new ArrayBufferReadBuffer(buffer.data);
+            return new Uint8ArrayReadBuffer(buffer.data);
         });
 
         this.worker.onerror = e => onErrorEmitter.fire(e);
@@ -53,7 +52,7 @@ export class PluginWorker {
         this.rpc = new RPCProtocolImpl({
             close: () => { },
             getWriteBuffer: () => {
-                const writer = new ArrayBufferWriteBuffer();
+                const writer = new Uint8ArrayWriteBuffer();
                 writer.onCommit(buffer => {
                     this.worker.postMessage(buffer);
                 });

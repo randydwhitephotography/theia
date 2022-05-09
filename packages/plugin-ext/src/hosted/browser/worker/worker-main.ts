@@ -34,7 +34,7 @@ import { loadManifest } from './plugin-manifest-loader';
 import { TerminalServiceExtImpl } from '../../../plugin/terminal-ext';
 import { reviver } from '../../../plugin/types-impl';
 import { SecretsExtImpl } from '../../../plugin/secrets-ext';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '@theia/core/lib/common/message-rpc/uint8-array-message-buffer';
 import { ChannelCloseEvent, MessageProvider } from '@theia/core';
 import { RPCProtocolImpl } from '../../../common/rpc-protocol';
 
@@ -50,13 +50,13 @@ const onMessageEmitter = new Emitter<MessageProvider>();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 addEventListener('message', (message: any) => {
-    onMessageEmitter.fire(() => new ArrayBufferReadBuffer(message.data));
+    onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(message.data));
 });
 
 const rpc = new RPCProtocolImpl({
     close: () => { },
     getWriteBuffer: () => {
-        const writeBuffer = new ArrayBufferWriteBuffer();
+        const writeBuffer = new Uint8ArrayWriteBuffer();
         writeBuffer.onCommit(buffer => {
             ctx.postMessage(buffer);
         });

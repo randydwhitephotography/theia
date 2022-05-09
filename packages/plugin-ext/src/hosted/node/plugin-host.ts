@@ -17,10 +17,9 @@
 import 'reflect-metadata';
 import { Channel, ChannelCloseEvent, MessageProvider } from '@theia/core/lib/common/message-rpc/channel';
 import { Emitter } from '@theia/core/lib/common/event';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '@theia/core/lib/common/message-rpc/uint8-array-message-buffer';
 import { Socket } from 'net';
-import { RPCProtocolImpl } from '../../common/rpc-protocol';
-import { ConnectionClosedError } from '../../common/rpc-protocol';
+import { ConnectionClosedError, RPCProtocolImpl } from '../../common/rpc-protocol';
 import { ProcessTerminatedMessage, ProcessTerminateMessage } from './hosted-plugin-protocol';
 import { PluginHostRPC } from './plugin-host-rpc';
 import { configureCachedReceive, encodeMessageStart } from './cached-process-messaging';
@@ -115,7 +114,7 @@ process.on('message', async (message: string) => {
     }
 });
 
-const pluginHostRPC = new PluginHostRPC(rpc,);
+const pluginHostRPC = new PluginHostRPC(rpc);
 pluginHostRPC.initialize();
 
 function createChannel(): Channel {
@@ -126,7 +125,7 @@ function createChannel(): Channel {
     eventEmitter.on('error', error => onErrorEmitter.fire(error));
     eventEmitter.on('close', () => onCloseEmitter.fire({ reason: 'Process has been closed from remote site (parent)' }));
     configureCachedReceive(pipe, buffer => {
-        onMessageEmitter.fire(() => new ArrayBufferReadBuffer(buffer));
+        onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(buffer));
     });
 
     return {
@@ -135,7 +134,7 @@ function createChannel(): Channel {
         onError: onErrorEmitter.event,
         onMessage: onMessageEmitter.event,
         getWriteBuffer: () => {
-            const result = new ArrayBufferWriteBuffer();
+            const result = new Uint8ArrayWriteBuffer();
             result.onCommit(buffer => {
                 if (!terminating) {
                     const messageStart = encodeMessageStart(buffer);

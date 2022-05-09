@@ -14,8 +14,7 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  ********************************************************************************/
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Channel } from '@theia/core/';
-import { RpcClient, RpcServer } from '@theia/core';
+import { Channel, RpcProtocol, RpcProtocolOptions } from '@theia/core/';
 import { Deferred } from '@theia/core/lib/common/promise-util';
 import { RpcMessageDecoder, RpcMessageEncoder } from '@theia/core/lib/common/message-rpc/rpc-message-encoder';
 
@@ -28,13 +27,14 @@ export interface RpcMessageParser {
  * as a rcp protocol message over a channel.
  */
 export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
-    private channelDeferred: Deferred<RpcClient> = new Deferred();
+    private channelDeferred: Deferred<RpcProtocol> = new Deferred();
 
     constructor(protected readonly id: string, protected readonly parser: RpcMessageParser) {
     }
 
     listen(channel: Channel): void {
-        const client = new RpcClient(channel, this.parser);
+        const clientOptions: RpcProtocolOptions = { ...this.parser, mode: 'clientOnly' };
+        const client = new RpcProtocol(channel, undefined, clientOptions);
         this.channelDeferred.resolve(client);
     }
 
@@ -45,7 +45,7 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
         const isNotify = this.isNotification(name);
         return (...args: any[]) => {
             const method = name.toString();
-            return this.channelDeferred.promise.then((connection: RpcClient) =>
+            return this.channelDeferred.promise.then((connection: RpcProtocol) =>
                 new Promise((resolve, reject) => {
                     try {
                         if (isNotify) {
@@ -92,7 +92,8 @@ export class RpcInvocationHandler {
     }
 
     listen(channel: Channel): void {
-        const server = new RpcServer(channel, (method: string, args: any[]) => this.handleRequest(method, args), this.parser);
+        const serverOptions: RpcProtocolOptions = { ...this.parser, mode: 'serverOnly' };
+        const server = new RpcProtocol(channel, (method: string, args: any[]) => this.handleRequest(method, args), serverOptions);
         server.onNotification((e: { method: string, args: any }) => this.onNotification(e.method, e.args));
     }
 

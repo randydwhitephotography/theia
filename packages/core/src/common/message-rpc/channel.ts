@@ -210,7 +210,9 @@ export class ChannelMultiplexer {
     protected handleData(id: string, data: ReadBuffer): void {
         const channel = this.openChannels.get(id);
         if (channel) {
-            channel.onMessageEmitter.fire(() => data);
+            channel.onMessageEmitter.fire(() => data.sliceAtReadPosition());
+        } else {
+            console.warn(`Could not handle data for channel ${id} because it is not open`);
         }
     }
 

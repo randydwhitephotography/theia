@@ -23,14 +23,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { Event } from '@theia/core/lib/common/event';
-import { Channel, ChannelMultiplexer, Disposable, DisposableCollection, ReadBuffer, WriteBuffer } from '@theia/core';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { Channel, Disposable, DisposableCollection, ReadBuffer, WriteBuffer } from '@theia/core';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '@theia/core/lib/common/message-rpc/uint8-array-message-buffer';
+import { ChannelMultiplexer } from '@theia/core/lib/common/message-rpc/channel';
 import { ObjectType, RpcMessageDecoder, RpcMessageEncoder } from '@theia/core/lib/common/message-rpc/rpc-message-encoder';
 import URI from '@theia/core/lib/common/uri';
 import { URI as VSCodeURI } from '@theia/core/shared/vscode-uri';
 import { BinaryBuffer } from '@theia/core/lib/common/buffer';
 import { Position, Range } from '../plugin/types-impl';
 import { ClientProxyHandler, RpcInvocationHandler, RpcMessageParser } from './proxy-handler';
+
 export interface MessageConnection {
     send(msg: string): void;
     onMessage: Event<string>;
@@ -178,7 +180,7 @@ export class PluginRpcMessageEncoder extends RpcMessageEncoder {
         }, true);
         // We don't want/need special encoding for `ResponseErrors`. Overwrite with no-op encoder.
         // The default Error encoder will be used as fallback
-        this.registerEncoder(ObjectType.RESPONSE_ERROR, {
+        this.registerEncoder(ObjectType.ResponseError, {
             is: () => false,
             write: () => { }
         }, true);
@@ -205,7 +207,7 @@ export class PluginRpcMessageDecoder extends RpcMessageDecoder {
  *  - each incoming message is handled in a separate `process.nextTick`.
  */
 export class QueuingChannelMultiplexer extends ChannelMultiplexer {
-    protected messagesToSend: ArrayBuffer[] = [];
+    protected messagesToSend: Uint8Array[] = [];
     protected readonly toDispose = new DisposableCollection();
 
     constructor(underlyingChannel: Channel) {
@@ -214,12 +216,12 @@ export class QueuingChannelMultiplexer extends ChannelMultiplexer {
     }
 
     protected override getUnderlyingWriteBuffer(): WriteBuffer {
-        const writer = new ArrayBufferWriteBuffer();
+        const writer = new Uint8ArrayWriteBuffer();
         writer.onCommit(buffer => this.commitSingleMessage(buffer));
         return writer;
     }
 
-    protected commitSingleMessage(msg: ArrayBuffer): void {
+    protected commitSingleMessage(msg: Uint8Array): void {
         if (this.toDispose.disposed) {
             throw ConnectionClosedError.create();
         }
@@ -239,7 +241,7 @@ export class QueuingChannelMultiplexer extends ChannelMultiplexer {
         const writer = this.underlyingChannel.getWriteBuffer();
 
         if (cachedMessages.length > 0) {
-            writer.writeInteger(cachedMessages.length);
+            writer.writeLength(cachedMessages.length);
             cachedMessages.forEach(msg => {
                 writer.writeBytes(msg);
             });
@@ -250,11 +252,11 @@ export class QueuingChannelMultiplexer extends ChannelMultiplexer {
 
     protected override handleMessage(buffer: ReadBuffer): void {
         // Read in the list of messages and handle each message individually
-        const length = buffer.readInteger();
+        const length = buffer.readLength();
         if (length > 0) {
             for (let index = 0; index < length; index++) {
                 const message = buffer.readBytes();
-                this.handleSingleMessage(new ArrayBufferReadBuffer(message));
+                this.handleSingleMessage(new Uint8ArrayReadBuffer(message));
 
             }
         }

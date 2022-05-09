@@ -15,7 +15,6 @@
 // *****************************************************************************
 
 import { ConnectionErrorHandler, ContributionProvider, ILogger, MessageService } from '@theia/core/lib/common';
-import { toArrayBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
 import { Deferred } from '@theia/core/lib/common/promise-util';
 import { createIpcEnv } from '@theia/core/lib/node/messaging/ipc-protocol';
 import { inject, injectable, named } from '@theia/core/shared/inversify';
@@ -85,12 +84,12 @@ export class HostedPluginProcess implements ServerPluginRunner {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public acceptMessage(pluginHostId: string, message: ArrayBuffer): boolean {
+    public acceptMessage(pluginHostId: string, message: Uint8Array): boolean {
         return pluginHostId === 'main';
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public onMessage(pluginHostId: string, message: ArrayBuffer): void {
+    public onMessage(pluginHostId: string, message: Uint8Array): void {
         if (this.childProcess) {
             const messageStart = encodeMessageStart(message);
             const pipe = this.childProcess.stdio[4] as Writable;
@@ -165,7 +164,7 @@ export class HostedPluginProcess implements ServerPluginRunner {
 
         configureCachedReceive(this.childProcess.stdio[4] as Readable, buffer => {
             if (this.client) {
-                this.client.postMessage(PLUGIN_HOST_BACKEND, toArrayBuffer(buffer));
+                this.client.postMessage(PLUGIN_HOST_BACKEND, buffer);
             }
         });
     }

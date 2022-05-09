@@ -38,7 +38,11 @@ export interface RpcProtocolOptions {
     /**
      * The message decoder that should be used. If `undefined` the default {@link RpcMessageDecoder} will be used.
      */
-    decoder?: RpcMessageDecoder
+    decoder?: RpcMessageDecoder,
+    /**
+     * The runtime mode determines whether the RPC protocol is bi-directional (default) or acts as a client or server only.
+     */
+    mode?: 'default' | 'clientOnly' | 'serverOnly'
 }
 /**
  * Establish a bi-directional RPC protocol on top of a given channel. Bi-directional means to send
@@ -56,6 +60,7 @@ export class RpcProtocol {
 
     protected readonly encoder: RpcMessageEncoder;
     protected readonly decoder: RpcMessageDecoder;
+    protected readonly mode: 'default' | 'clientOnly' | 'serverOnly';
 
     protected readonly onNotificationEmitter: Emitter<{ method: string; args: any[]; }> = new Emitter();
     protected readonly cancellationTokenSources = new Map<number, CancellationTokenSource>();
@@ -64,37 +69,50 @@ export class RpcProtocol {
         return this.onNotificationEmitter.event;
     }
 
-    constructor(public readonly channel: Channel, public readonly requestHandler: RequestHandler, options: RpcProtocolOptions = {}) {
+    constructor(public readonly channel: Channel, public readonly requestHandler: RequestHandler | undefined, options: RpcProtocolOptions = {}) {
         this.encoder = options.encoder ?? new RpcMessageEncoder();
         this.decoder = options.decoder ?? new RpcMessageDecoder();
+        this.mode = options.mode ?? 'default';
+
+        if (this.mode !== 'clientOnly' && requestHandler === undefined) {
+            console.error('RPCProtocol was initialized without a request handler but was not set to clientOnly mode.');
+        }
+
         const registration = channel.onMessage(readBuffer => this.handleMessage(this.decoder.parse(readBuffer())));
         channel.onClose(() => registration.dispose());
-
     }
 
     handleMessage(message: RpcMessage): void {
-        switch (message.type) {
-            case RpcMessageType.Cancel: {
-                this.handleCancel(message.id);
-                break;
-            }
-            case RpcMessageType.Request: {
-                this.handleRequest(message.id, message.method, message.args);
-                break;
-            }
-            case RpcMessageType.Notification: {
-                this.handleNotify(message.id, message.method, message.args);
-                break;
-            }
-            case RpcMessageType.Reply: {
-                this.handleReply(message.id, message.res);
-                break;
-            }
-            case RpcMessageType.ReplyErr: {
-                this.handleReplyErr(message.id, message.err);
-                break;
+        if (this.mode !== 'clientOnly') {
+            switch (message.type) {
+                case RpcMessageType.Cancel: {
+                    this.handleCancel(message.id);
+                    return;
+                }
+                case RpcMessageType.Request: {
+                    this.handleRequest(message.id, message.method, message.args);
+                    return;
+                }
+                case RpcMessageType.Notification: {
+                    this.handleNotify(message.id, message.method, message.args);
+                    return;
+                }
             }
         }
+        if (this.mode !== 'serverOnly') {
+            switch (message.type) {
+                case RpcMessageType.Reply: {
+                    this.handleReply(message.id, message.res);
+                    return;
+                }
+                case RpcMessageType.ReplyErr: {
+                    this.handleReplyErr(message.id, message.err);
+                    return;
+                }
+            }
+        }
+        // If the message was not handled until here, it is incompatible with the mode.
+        console.warn(`Received message incompatible with this RPCProtocol's mode '${this.mode}'. Type: ${message.type}. ID: ${message.id}. Channel: ${(this.channel as any).id}`);
     }
 
     protected handleReply(id: number, value: any): void {
@@ -176,7 +194,6 @@ export class RpcProtocol {
     }
 
     protected async handleRequest(id: number, method: string, args: any[]): Promise<void> {
-
         const output = this.channel.getWriteBuffer();
 
         // Check if the last argument of the received args is the key for indicating that a cancellation token should be used
@@ -189,7 +206,7 @@ export class RpcProtocol {
         }
 
         try {
-            const result = await this.requestHandler(method, args);
+            const result = await this.requestHandler!(method, args);
             this.cancellationTokenSources.delete(id);
             this.encoder.replyOK(output, id, result);
             output.commit();

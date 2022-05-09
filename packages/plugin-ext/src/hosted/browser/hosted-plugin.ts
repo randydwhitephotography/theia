@@ -29,7 +29,7 @@ import { PluginMetadata, getPluginId, HostedPluginServer, DeployedPlugin, Plugin
 import { HostedPluginWatcher } from './hosted-plugin-watcher';
 import { MAIN_RPC_CONTEXT, PluginManagerExt, ConfigStorage, UIKind } from '../../common/plugin-api-rpc';
 import { setUpPluginApi } from '../../main/browser/main-context';
-import { RPCProtocol } from '../../common/rpc-protocol';
+import { RPCProtocol, RPCProtocolImpl } from '../../common/rpc-protocol';
 import {
     Disposable, DisposableCollection, Emitter, isCancelled,
     ILogger, ContributionProvider, CommandRegistry, WillExecuteCommandEvent,
@@ -66,8 +66,7 @@ import { StandaloneServices } from '@theia/monaco-editor-core/esm/vs/editor/stan
 import { ILanguageService } from '@theia/monaco-editor-core/esm/vs/editor/common/languages/language';
 import { LanguageService } from '@theia/monaco-editor-core/esm/vs/editor/common/services/languageService';
 import { Measurement, Stopwatch } from '@theia/core/lib/common';
-import { RPCProtocolImpl } from '../../common/rpc-protocol';
-import { ArrayBufferReadBuffer, ArrayBufferWriteBuffer } from '@theia/core/lib/common/message-rpc/array-buffer-message-buffer';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '@theia/core/lib/common/message-rpc/uint8-array-message-buffer';
 
 export type PluginHost = 'frontend' | string;
 export type DebugActivationEvent = 'onDebugResolve' | 'onDebugInitialConfigurations' | 'onDebugAdapterProtocolTracker' | 'onDebugDynamicConfigurations';
@@ -529,14 +528,14 @@ export class HostedPluginSupport {
         const onMessageEmitter = new Emitter<MessageProvider>();
         this.watcher.onPostMessageEvent(received => {
             if (pluginHostId === received.pluginHostId) {
-                onMessageEmitter.fire(() => new ArrayBufferReadBuffer(received.message));
+                onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(received.message));
             }
         });
 
         return new RPCProtocolImpl({
             close: () => { },
             getWriteBuffer: () => {
-                const writer = new ArrayBufferWriteBuffer();
+                const writer = new Uint8ArrayWriteBuffer();
                 writer.onCommit(buffer => {
                     this.server.onMessage(pluginHostId, buffer);
                 });
