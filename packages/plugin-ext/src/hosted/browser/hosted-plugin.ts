@@ -516,8 +516,10 @@ export class HostedPluginSupport {
 
     protected initRpc(host: PluginHost, pluginId: string): RPCProtocol {
         const rpc = host === 'frontend' ? new PluginWorker().rpc : this.createServerRpc(host);
+        console.log('[Tobias] hosted-plugin - createServerRpc finished');
         setUpPluginApi(rpc, this.container);
         this.mainPluginApiProviders.getContributions().forEach(p => p.initialize(rpc, this.container));
+        console.log('[Tobias] hosted-plugin - initRpc finished');
         return rpc;
     }
 
@@ -526,13 +528,9 @@ export class HostedPluginSupport {
         const onCloseEmitter = new Emitter<ChannelCloseEvent>();
         const onErrorEmitter = new Emitter<unknown>();
         const onMessageEmitter = new Emitter<MessageProvider>();
-        this.watcher.onPostMessageEvent(received => {
-            if (pluginHostId === received.pluginHostId) {
-                onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(received.message));
-            }
-        });
 
-        return new RPCProtocolImpl({
+        // Create RPC protocol before adding the listener to the watcher to receive the watcher's cached messages after the rpc protocol was created.
+        const rpc = new RPCProtocolImpl({
             close: () => { },
             getWriteBuffer: () => {
                 const writer = new Uint8ArrayWriteBuffer();
@@ -546,6 +544,14 @@ export class HostedPluginSupport {
             onMessage: onMessageEmitter.event
         });
 
+        this.watcher.onPostMessageEvent(received => {
+            console.log('[Tobias] hosted-plugin - this.watcher.onPostMessageEvent');
+            if (pluginHostId === received.pluginHostId) {
+                onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(received.message));
+            }
+        });
+
+        return rpc;
     }
     private async updateStoragePath(): Promise<void> {
         const path = await this.getStoragePath();

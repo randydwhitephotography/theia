@@ -78,6 +78,12 @@ export namespace ConnectionClosedError {
     }
 }
 
+// Start with 100 to avoid clashes with ObjectType from core.
+// All values < 255, still fit into Uint8
+export enum PluginObjectType {
+    TheiaRange = 101,
+}
+
 export class RPCProtocolImpl implements RPCProtocol {
     private readonly locals = new Map<string, RpcInvocationHandler>();
     private readonly proxies = new Map<string, any>();
@@ -170,14 +176,25 @@ export class PluginRpcMessageEncoder extends RpcMessageEncoder {
     }
     protected override registerEncoders(): void {
         super.registerEncoders();
-        // Overwrite default json encoder.
-        this.registerEncoder(ObjectType.JSON, {
-            is: value => true,
+
+        this.registerEncoder(PluginObjectType.TheiaRange, {
+            is: value => value instanceof Range,
             write: (buf, value) => {
-                const json = JSON.stringify(value, this.replacer);
-                buf.writeString(json);
+                const range = value as Range;
+                const serializedValue = {
+                    start: {
+                        line: range.start.line,
+                        character: range.start.character
+                    },
+                    end: {
+                        line: range.end.line,
+                        character: range.end.character
+                    }
+                };
+                buf.writeString(JSON.stringify(serializedValue));
             }
-        }, true);
+        });
+
         // We don't want/need special encoding for `ResponseErrors`. Overwrite with no-op encoder.
         // The default Error encoder will be used as fallback
         this.registerEncoder(ObjectType.ResponseError, {
@@ -194,9 +211,16 @@ export class PluginRpcMessageDecoder extends RpcMessageDecoder {
     }
     protected override registerDecoders(): void {
         super.registerDecoders();
-        this.registerDecoder(ObjectType.JSON, {
-            read: buf => JSON.parse(buf.readString(), this.reviver)
-        }, true);
+
+        this.registerDecoder(PluginObjectType.TheiaRange, {
+            read: buf => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const obj: any = JSON.parse(buf.readString());
+                const start = new Position(obj.start.line, obj.start.character);
+                const end = new Position(obj.end.line, obj.end.character);
+                return new Range(start, end);
+            }
+        });
     }
 
 }
@@ -317,13 +341,12 @@ export namespace ObjectsTransferrer {
                 $type: SerializedObjectType.THEIA_RANGE,
                 data: JSON.stringify(serializedValue)
             } as SerializedObject;
-        } else if (value && value['$mid'] === 1) {
+        } else if (value instanceof VSCodeURI) {
             // Given value is VSCode URI
             // We cannot use instanceof here because VSCode URI has toJSON method which is invoked before this replacer.
-            const uri = VSCodeURI.revive(value);
             return {
                 $type: SerializedObjectType.VSCODE_URI,
-                data: uri.toString()
+                data: value.toString()
             } as SerializedObject;
         } else if (value instanceof BinaryBuffer) {
             const bytes = [...value.buffer.values()];

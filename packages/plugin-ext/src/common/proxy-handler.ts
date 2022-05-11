@@ -29,9 +29,7 @@ export interface RpcMessageParser {
 export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
     private channelDeferred: Deferred<RpcProtocol> = new Deferred();
 
-    constructor(protected readonly id: string, protected readonly parser: RpcMessageParser) {
-        console.log(`[TOBIAS]Created proxy for id: ${this.id}`);
-    }
+    constructor(protected readonly id: string, protected readonly parser: RpcMessageParser) { }
 
     listen(channel: Channel): void {
         const clientOptions: RpcProtocolOptions = { ...this.parser, mode: 'clientOnly' };
@@ -41,9 +39,6 @@ export class ClientProxyHandler<T extends object> implements ProxyHandler<T> {
     }
 
     get(target: any, name: string, receiver: any): any {
-        if (name.charCodeAt(0) !== 36) {
-            console.log(`[TOBIAS] Invoke proxy ${this.id} with : ${name}`);
-        }
         if (target[name] || name.charCodeAt(0) !== 36 /* CharCode.DollarSign */) {
             return target[name];
         }

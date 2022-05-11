@@ -17,6 +17,9 @@
 
 import { ResponseError } from 'vscode-languageserver-protocol';
 import { ReadBuffer, WriteBuffer } from './message-buffer';
+import TheiaURI from '../uri';
+import { URI as VSCodeURI } from '../../../shared/vscode-uri';
+import { BinaryBuffer } from '../buffer';
 
 /**
  * This code lets you encode rpc protocol messages (request/reply/notification/error/cancel)
@@ -89,7 +92,11 @@ export enum ObjectType {
     Number = 7,
     // eslint-disable-next-line @typescript-eslint/no-shadow
     ResponseError = 8,
-    Error = 9
+    Error = 9,
+    TheiaUri = 10,
+    VSCodeUri = 11,
+    // eslint-disable-next-line @typescript-eslint/no-shadow
+    BinaryBuffer = 12,
 }
 
 /**
@@ -200,6 +207,17 @@ export class RpcMessageDecoder {
             read: buf => buf.readNumber()
         });
 
+        this.registerDecoder(ObjectType.TheiaUri, {
+            read: buf => new TheiaURI(buf.readString())
+        });
+
+        this.registerDecoder(ObjectType.VSCodeUri, {
+            read: buf => VSCodeURI.parse(buf.readString())
+        });
+
+        this.registerDecoder(ObjectType.BinaryBuffer, {
+            read: buf => BinaryBuffer.wrap(buf.readBytes())
+        });
     }
 
     /**
@@ -420,6 +438,28 @@ export class RpcMessageEncoder {
             is: value => typeof value === 'number',
             write: (buf, value) => {
                 buf.writeNumber(value);
+            }
+        });
+
+        this.registerEncoder(ObjectType.TheiaUri, {
+            is: value => value instanceof TheiaURI,
+            write: (buf, value) => {
+                buf.writeString(value.toString());
+            }
+        });
+
+        this.registerEncoder(ObjectType.VSCodeUri, {
+            is: value => value instanceof VSCodeURI,
+            write: (buf, value) => {
+                buf.writeString(value.toString());
+            }
+        });
+
+        this.registerEncoder(ObjectType.BinaryBuffer, {
+            is: value => value instanceof BinaryBuffer,
+            write: (buf, value) => {
+                const binaryBuffer = value as BinaryBuffer;
+                buf.writeBytes(binaryBuffer.buffer);
             }
         });
     }

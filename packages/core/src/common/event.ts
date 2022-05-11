@@ -153,6 +153,7 @@ class CallbackList implements Iterable<Callback> {
 
 export interface EmitterOptions {
     onFirstListenerAdd?: Function;
+    onFirstListenerDidAdd?: Function;
     onLastListenerRemove?: Function;
 }
 
@@ -183,10 +184,14 @@ export class Emitter<T = any> {
                 if (!this._callbacks) {
                     this._callbacks = new CallbackList();
                 }
-                if (this._options && this._options.onFirstListenerAdd && this._callbacks.isEmpty()) {
+                const isFirstListener = this._callbacks.isEmpty();
+                if (isFirstListener && this._options && this._options.onFirstListenerAdd) {
                     this._options.onFirstListenerAdd(this);
                 }
                 this._callbacks.add(listener, thisArgs);
+                if (isFirstListener && this._options && this._options.onFirstListenerDidAdd) {
+                    this._options.onFirstListenerDidAdd(this);
+                }
                 const removeMaxListenersCheck = this.checkMaxListeners(Event.getMaxListeners(this._event));
 
                 const result: Disposable = {

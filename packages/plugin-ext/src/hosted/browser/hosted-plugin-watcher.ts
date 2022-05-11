@@ -21,18 +21,23 @@ import { LogPart } from '../../common/types';
 
 @injectable()
 export class HostedPluginWatcher {
-    private onPostMessage = new Emitter<{ pluginHostId: string, message: Uint8Array }>();
+    private onPostMessage = new Emitter<{ pluginHostId: string, message: Uint8Array }>({
+        onFirstListenerDidAdd: () => this.flushCachedMessages(),
+    });
     private onLogMessage = new Emitter<LogPart>();
+    private listenerAdded = false;
+    private cache: Array<{ pluginHostId: string, message: Uint8Array }> = [];
 
     private readonly onDidDeployEmitter = new Emitter<void>();
     readonly onDidDeploy = this.onDidDeployEmitter.event;
 
     getHostedPluginClient(): HostedPluginClient {
-        const messageEmitter = this.onPostMessage;
+        const emitMessage = (pluginHostId: string, message: Uint8Array) => this.postOrCacheMessage(pluginHostId, message);
         const logEmitter = this.onLogMessage;
         return {
             postMessage(pluginHostId, message: Uint8Array): Promise<void> {
-                messageEmitter.fire({ pluginHostId, message });
+                console.log('[Tobias] HostedPluginWatcher - postMessage', message.byteLength);
+                emitMessage(pluginHostId, message);
                 return Promise.resolve();
             },
             log(logPart: LogPart): Promise<void> {
@@ -43,7 +48,27 @@ export class HostedPluginWatcher {
         };
     }
 
+    private postOrCacheMessage(pluginHostId: string, message: Uint8Array): void {
+        const event = { pluginHostId, message };
+        if (this.listenerAdded) {
+            this.onPostMessage.fire(event);
+        } else {
+            console.log('[Lucas] HostedPluginWatcher - cache message:', message.byteLength);
+            this.cache.push(event);
+        }
+    }
+
+    private flushCachedMessages(): void {
+        console.log('[Lucas] HostedPluginWatcher - flushCachedMessages', this.cache.length);
+        this.listenerAdded = true;
+        this.cache.forEach(message => {
+            this.onPostMessage.fire(message);
+        });
+        this.cache = [];
+    }
+
     get onPostMessageEvent(): Event<{ pluginHostId: string, message: Uint8Array }> {
+        console.log('[Tobias] HostedPluginWatcher - onPostMessageEvent');
         return this.onPostMessage.event;
     }
 
