@@ -1,28 +1,30 @@
-/********************************************************************************
- * Copyright (C) 2021 Red Hat, Inc. and others.
- *
- * This program and the accompanying materials are made available under the
- * terms of the Eclipse Public License v. 2.0 which is available at
- * http://www.eclipse.org/legal/epl-2.0.
- *
- * This Source Code may also be made available under the following Secondary
- * Licenses when the conditions for such availability set forth in the Eclipse
- * Public License v. 2.0 are satisfied: GNU General Public License, version 2
- * with the GNU Classpath Exception which is available at
- * https://www.gnu.org/software/classpath/license.html.
- *
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
- ********************************************************************************/
+// *****************************************************************************
+// Copyright (C) 2021 Red Hat, Inc. and others.
+//
+// This program and the accompanying materials are made available under the
+// terms of the Eclipse Public License v. 2.0 which is available at
+// http://www.eclipse.org/legal/epl-2.0.
+//
+// This Source Code may also be made available under the following Secondary
+// Licenses when the conditions for such availability set forth in the Eclipse
+// Public License v. 2.0 are satisfied: GNU General Public License, version 2
+// with the GNU Classpath Exception which is available at
+// https://www.gnu.org/software/classpath/license.html.
+//
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
+// *****************************************************************************
 
 /**
  * A buffer maintaining a write position capable of writing primitive values
  */
 export interface WriteBuffer {
-    writeByte(byte: number): WriteBuffer
-    writeInt(value: number): WriteBuffer;
-    writeString(value: string): WriteBuffer;
-    writeBytes(value: ArrayBuffer): WriteBuffer;
-
+    writeUint8(byte: number): WriteBuffer
+    writeUint16(value: number): WriteBuffer
+    writeUint32(value: number): WriteBuffer
+    writeString(value: string): WriteBuffer
+    writeBytes(value: Uint8Array): WriteBuffer
+    writeNumber(value: number): WriteBuffer
+    writeLength(value: number): WriteBuffer
     /**
      * Makes any writes to the buffer permanent, for example by sending the writes over a channel.
      * You must obtain a new write buffer after committing
@@ -33,13 +35,24 @@ export interface WriteBuffer {
 export class ForwardingWriteBuffer implements WriteBuffer {
     constructor(protected readonly underlying: WriteBuffer) {
     }
-    writeByte(byte: number): WriteBuffer {
-        this.underlying.writeByte(byte);
+
+    writeUint8(byte: number): WriteBuffer {
+        this.underlying.writeUint8(byte);
         return this;
     }
 
-    writeInt(value: number): WriteBuffer {
-        this.underlying.writeInt(value);
+    writeUint16(value: number): WriteBuffer {
+        this.underlying.writeUint16(value);
+        return this;
+    }
+
+    writeUint32(value: number): WriteBuffer {
+        this.underlying.writeUint32(value);
+        return this;
+    }
+
+    writeLength(value: number): WriteBuffer {
+        this.underlying.writeLength(value);
         return this;
     }
 
@@ -48,8 +61,13 @@ export class ForwardingWriteBuffer implements WriteBuffer {
         return this;
     }
 
-    writeBytes(value: ArrayBuffer): WriteBuffer {
+    writeBytes(value: Uint8Array): WriteBuffer {
         this.underlying.writeBytes(value);
+        return this;
+    }
+
+    writeNumber(value: number): WriteBuffer {
+        this.underlying.writeNumber(value);
         return this;
     }
 
@@ -63,8 +81,19 @@ export class ForwardingWriteBuffer implements WriteBuffer {
  * reading primitive values.
  */
 export interface ReadBuffer {
-    readByte(): number;
-    readInt(): number;
+    readUint8(): number;
+    readUint16(): number;
+    readUint32(): number;
     readString(): string;
-    readBytes(): ArrayBuffer;
+    readNumber(): number,
+    readLength(): number,
+    readBytes(): Uint8Array;
+
+    /**
+     * Returns a new read buffer  whose starting read position is the current read position of this buffer.
+     * This is useful to create read buffers sub messages.
+     * (e.g. when using a multiplexer the beginning of the message might contain some protocol overhead which should not be part
+     * of the message reader that is sent to the target channel)
+     */
+    sliceAtReadPosition(): ReadBuffer
 }

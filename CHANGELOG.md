@@ -7,6 +7,12 @@
 ## v.1.26.0
 
 - [plugin] Introduce `DebugSession#workspaceFolder` [#11090](https://github.com/eclipse-theia/theia/pull/11090) - Contributed on behalf of STMicroelectronics
+- [core] Refactored the core messaging API. Replaced `vscode-ws-jsonrpc` with a custom RPC protocol that is better suited for handling binary data and enables message tunneling.
+  This impacts all main concepts of the messaging API. The API no longer exposes a `Connection` object and uses a generic `Channel` implementation instead.
+  - `MessagingService`: No longer offers the `listen` and `forward` method. Use `wsChannel` instead.
+  [#11011](https://github.com/eclipse-theia/theia/pull/11011) - Contributed on behalf of STMicroelectronics.
+
+<a name="breaking_changes_1.26.0">[Breaking Changes:](#breaking_changes_1.26.0)</a>
 
 ## v1.25.0 - 4/28/2022
 
@@ -50,7 +56,6 @@
 - [preferences] fixed issue with `files.eol` preference rendering [#11079](https://github.com/eclipse-theia/theia/pull/11079)
 - [preferences] improved preference validation warnings [#11025](https://github.com/eclipse-theia/theia/pull/11025)
 - [preferences] updated handling to make node renderers more robust against `null` values [#11074](https://github.com/eclipse-theia/theia/pull/11074)
-- [workspace] fixed issue resulting in duplicate entries for recent workspaces [#11016](https://github.com/eclipse-theia/theia/pull/11016)
 
 <a name="breaking_changes_1.25.0">[Breaking Changes:](#breaking_changes_1.25.0)</a>
 

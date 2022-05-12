@@ -16,20 +16,44 @@
 
 import 'reflect-metadata';
 import { dynamicRequire } from '../dynamic-require';
-import { ConsoleLogger } from 'vscode-ws-jsonrpc/lib/logger';
-import { createMessageConnection, IPCMessageReader, IPCMessageWriter, Trace } from 'vscode-ws-jsonrpc';
 import { checkParentAlive, IPCEntryPoint } from './ipc-protocol';
+import { Socket } from 'net';
+import { Channel, ChannelCloseEvent, Emitter, MessageProvider } from '../../common';
+import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '../../common/message-rpc/uint8-array-message-buffer';
 
 checkParentAlive();
 
 const entryPoint = IPCEntryPoint.getScriptFromEnv();
-const reader = new IPCMessageReader(process);
-const writer = new IPCMessageWriter(process);
-const logger = new ConsoleLogger();
-const connection = createMessageConnection(reader, writer, logger);
-connection.trace(Trace.Off, {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    log: (message: any, data?: string) => console.log(message, data)
-});
 
-dynamicRequire<{ default: IPCEntryPoint }>(entryPoint).default(connection);
+dynamicRequire<{ default: IPCEntryPoint }>(entryPoint).default(createChannel());
+
+function createChannel(): Channel {
+    const pipe = new Socket({
+        fd: 4
+    });
+
+    const onCloseEmitter = new Emitter<ChannelCloseEvent>();
+    const onMessageEmitter = new Emitter<MessageProvider>();
+    const onErrorEmitter = new Emitter<unknown>();
+    const eventEmitter: NodeJS.EventEmitter = process;
+    eventEmitter.on('error', error => onErrorEmitter.fire(error));
+    eventEmitter.on('close', () => onCloseEmitter.fire({ reason: 'Process has been closed from remote site (parent)' }));
+    pipe.on('data', (data: Uint8Array) => {
+        onMessageEmitter.fire(() => new Uint8ArrayReadBuffer(data));
+    });
+
+    return {
+        close: () => process.exit(),
+        onClose: onCloseEmitter.event,
+        onError: onErrorEmitter.event,
+        onMessage: onMessageEmitter.event,
+        getWriteBuffer: () => {
+            const result = new Uint8ArrayWriteBuffer();
+            result.onCommit(buffer => {
+                pipe.write(buffer);
+            });
+
+            return result;
+        }
+    };
+}
