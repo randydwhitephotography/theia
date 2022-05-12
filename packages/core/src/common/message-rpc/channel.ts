@@ -175,8 +175,10 @@ export class ChannelMultiplexer {
 
     protected handleAckOpen(id: string): void {
         // edge case: both side try to open a channel at the same time.
+        console.log(`[Tobias] ChannelMultiplexer.handleAckOpen: ${id}`);
         const resolve = this.pendingOpen.get(id);
         if (resolve) {
+            console.log(`[Tobias] ChannelMultiplexer.handleAckOpen - resolve exists: ${id}`);
             const channel = this.createChannel(id);
             this.pendingOpen.delete(id);
             this.openChannels.set(id, channel);
@@ -186,16 +188,20 @@ export class ChannelMultiplexer {
     }
 
     protected handleOpen(id: string): void {
+        console.log(`[Tobias] ChannelMultiplexer.handleOpen: ${id}`);
         if (!this.openChannels.has(id)) {
             const channel = this.createChannel(id);
             this.openChannels.set(id, channel);
             const resolve = this.pendingOpen.get(id);
             if (resolve) {
+                console.log(`[Tobias] ChannelMultiplexer.handleOpen - resolve: ${id}`);
                 // edge case: both side try to open a channel at the same time.
                 resolve(channel);
             }
             this.getUnderlyingWriteBuffer().writeUint8(MessageTypes.AckOpen).writeString(id).commit();
             this.onOpenChannelEmitter.fire({ id, channel });
+        } else {
+            console.log(`[Tobias] ChannelMultiplexer.handleOpen - open channel existing: ${id}`);
         }
     }
 
@@ -241,11 +247,13 @@ export class ChannelMultiplexer {
     open(id: string): Promise<Channel> {
         const existingChannel = this.getOpenChannel(id);
         if (existingChannel) {
+            console.log(`[Tobias] ChannelMultiplexer.open - channel exists: ${id}`);
             return Promise.resolve(existingChannel);
         }
         const result = new Promise<Channel>((resolve, reject) => {
             this.pendingOpen.set(id, resolve);
         });
+        console.log(`[Tobias] ChannelMultiplexer.open - channel send open: ${id}`);
         this.getUnderlyingWriteBuffer().writeUint8(MessageTypes.Open).writeString(id).commit();
         return result;
     }

@@ -164,6 +164,7 @@ export class HostedPluginProcess implements ServerPluginRunner {
 
         configureCachedReceive(this.childProcess.stdio[4] as Readable, buffer => {
             if (this.client) {
+                console.log('[Tobias] Send cached messages to HostedPluginClient', buffer.byteLength);
                 this.client.postMessage(PLUGIN_HOST_BACKEND, buffer);
             }
         });

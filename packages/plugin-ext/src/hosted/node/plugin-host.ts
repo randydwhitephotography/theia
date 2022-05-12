@@ -138,6 +138,7 @@ function createChannel(): Channel {
                 if (!terminating) {
                     const messageStart = encodeMessageStart(buffer);
                     pipe.write(messageStart);
+                    console.log('[Tobias] plugin-host - send', buffer.byteLength);
                     pipe.write(new Uint8Array(buffer));
                 }
             });

@@ -62,6 +62,7 @@ export function configureCachedReceive(readable: Readable, onReceived: (buffer: 
         }
     };
 
+    console.log('[Tobias] configureCachedReceive - attach listener');
     readable.on('data', (data: Uint8Array) => {
         handleDataReceived(data);
     });
