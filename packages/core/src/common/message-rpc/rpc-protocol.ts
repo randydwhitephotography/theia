@@ -168,6 +168,13 @@ export class RpcProtocol {
     }
 
     sendNotification(method: string, args: any[]): void {
+        // If the notification supports a CancellationToken, it needs to be treated like a request
+        // because cancellation does not work with the simplified "fire and forget" approach of simple notifications.
+        if (args.length && CancellationToken.is(args[args.length - 1])) {
+            this.sendRequest(method, args);
+            return;
+        }
+
         const output = this.channel.getWriteBuffer();
         this.encoder.notification(output, this.nextMessageId++, method, args);
         output.commit();
