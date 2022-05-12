@@ -27,9 +27,6 @@ import { Channel, Disposable, DisposableCollection, ReadBuffer, WriteBuffer } fr
 import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '@theia/core/lib/common/message-rpc/uint8-array-message-buffer';
 import { ChannelMultiplexer } from '@theia/core/lib/common/message-rpc/channel';
 import { ObjectType, RpcMessageDecoder, RpcMessageEncoder } from '@theia/core/lib/common/message-rpc/rpc-message-encoder';
-import URI from '@theia/core/lib/common/uri';
-import { URI as VSCodeURI } from '@theia/core/shared/vscode-uri';
-import { BinaryBuffer } from '@theia/core/lib/common/buffer';
 import { Position, Range } from '../plugin/types-impl';
 import { ClientProxyHandler, RpcInvocationHandler, RpcMessageParser } from './proxy-handler';
 
@@ -78,7 +75,7 @@ export namespace ConnectionClosedError {
     }
 }
 
-// Start with 100 to avoid clashes with ObjectType from core.
+// Start with 101 to avoid clashes with ObjectType from core.
 // All values < 255, still fit into Uint8
 export enum PluginObjectType {
     TheiaRange = 101,
@@ -94,19 +91,12 @@ export class RPCProtocolImpl implements RPCProtocol {
         Disposable.create(() => { /* mark as no disposed */ })
     );
 
-    constructor(channel: Channel, transformations: {
-        replacer?: (key: string | undefined, value: any) => any,
-        reviver?: (key: string | undefined, value: any) => any
-    } = {}) {
+    constructor(channel: Channel) {
         this.multiplexer = new QueuingChannelMultiplexer(channel);
         this.toDispose.push(Disposable.create(() => this.multiplexer.closeUnderlyingChannel()));
-
-        const reviver = transformations?.reviver || ObjectsTransferrer.reviver;
-        const replacer = transformations?.replacer || ObjectsTransferrer.replacer;
-
         this.messageParser = {
-            encoder: new PluginRpcMessageEncoder(replacer),
-            decoder: new PluginRpcMessageDecoder(reviver)
+            encoder: new PluginRpcMessageEncoder(),
+            decoder: new PluginRpcMessageDecoder(),
         };
     }
 
@@ -171,9 +161,7 @@ export class RPCProtocolImpl implements RPCProtocol {
 }
 
 export class PluginRpcMessageEncoder extends RpcMessageEncoder {
-    constructor(protected replacer: (key: string | undefined, value: any) => any) {
-        super();
-    }
+
     protected override registerEncoders(): void {
         super.registerEncoders();
 
@@ -206,9 +194,6 @@ export class PluginRpcMessageEncoder extends RpcMessageEncoder {
 
 export class PluginRpcMessageDecoder extends RpcMessageDecoder {
 
-    constructor(protected reviver: (key: string | undefined, value: any) => any) {
-        super();
-    }
     protected override registerDecoders(): void {
         super.registerDecoders();
 
@@ -222,7 +207,6 @@ export class PluginRpcMessageDecoder extends RpcMessageDecoder {
             }
         });
     }
-
 }
 
 /**
@@ -290,97 +274,3 @@ export class QueuingChannelMultiplexer extends ChannelMultiplexer {
         return super.handleMessage(buffer);
     }
 }
-
-interface SerializedObject {
-    $type: SerializedObjectType;
-    data: string;
-}
-
-enum SerializedObjectType {
-    THEIA_URI,
-    VSCODE_URI,
-    THEIA_RANGE,
-    TEXT_BUFFER
-}
-
-function isSerializedObject(obj: any): obj is SerializedObject {
-    return obj && obj.$type !== undefined && obj.data !== undefined;
-}
-/**
- * These functions are responsible for correct transferring objects via rpc channel.
- *
- * To reach that some specific kind of objects is converted to json in some custom way
- * and then, after receiving, revived to objects again,
- * so there is feeling that object was transferred via rpc channel.
- *
- * To distinguish between regular and altered objects, field $type is added to altered ones.
- * Also value of that field specifies kind of the object.
- */
-export namespace ObjectsTransferrer {
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    export function replacer(key: string | undefined, value: any): any {
-        if (value instanceof URI) {
-            return {
-                $type: SerializedObjectType.THEIA_URI,
-                data: value.toString()
-            } as SerializedObject;
-        } else if (value instanceof Range) {
-            const range = value as Range;
-            const serializedValue = {
-                start: {
-                    line: range.start.line,
-                    character: range.start.character
-                },
-                end: {
-                    line: range.end.line,
-                    character: range.end.character
-                }
-            };
-            return {
-                $type: SerializedObjectType.THEIA_RANGE,
-                data: JSON.stringify(serializedValue)
-            } as SerializedObject;
-        } else if (value instanceof VSCodeURI) {
-            // Given value is VSCode URI
-            // We cannot use instanceof here because VSCode URI has toJSON method which is invoked before this replacer.
-            return {
-                $type: SerializedObjectType.VSCODE_URI,
-                data: value.toString()
-            } as SerializedObject;
-        } else if (value instanceof BinaryBuffer) {
-            const bytes = [...value.buffer.values()];
-            return {
-                $type: SerializedObjectType.TEXT_BUFFER,
-                data: JSON.stringify({ bytes })
-            };
-        }
-
-        return value;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    export function reviver(key: string | undefined, value: any): any {
-        if (isSerializedObject(value)) {
-            switch (value.$type) {
-                case SerializedObjectType.THEIA_URI:
-                    return new URI(value.data);
-                case SerializedObjectType.VSCODE_URI:
-                    return VSCodeURI.parse(value.data);
-                case SerializedObjectType.THEIA_RANGE:
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const obj: any = JSON.parse(value.data);
-                    const start = new Position(obj.start.line, obj.start.character);
-                    const end = new Position(obj.end.line, obj.end.character);
-                    return new Range(start, end);
-                case SerializedObjectType.TEXT_BUFFER:
-                    const data: { bytes: number[] } = JSON.parse(value.data);
-                    return BinaryBuffer.wrap(Uint8Array.from(data.bytes));
-            }
-        }
-
-        return value;
-    }
-
-}
-

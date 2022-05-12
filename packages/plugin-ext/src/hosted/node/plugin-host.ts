@@ -23,7 +23,6 @@ import { ConnectionClosedError, RPCProtocolImpl } from '../../common/rpc-protoco
 import { ProcessTerminatedMessage, ProcessTerminateMessage } from './hosted-plugin-protocol';
 import { PluginHostRPC } from './plugin-host-rpc';
 import { configureCachedReceive, encodeMessageStart } from './cached-process-messaging';
-import { reviver } from '../../plugin/types-impl';
 
 console.log('PLUGIN_HOST(' + process.pid + ') starting instance');
 
@@ -85,7 +84,7 @@ process.on('rejectionHandled', (promise: Promise<any>) => {
 
 let terminating = false;
 const channel = createChannel();
-const rpc = new RPCProtocolImpl(channel, { reviver: reviver });
+const rpc = new RPCProtocolImpl(channel);
 
 process.on('message', async (message: string) => {
     if (terminating) {

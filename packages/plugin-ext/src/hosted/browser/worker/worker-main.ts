@@ -32,7 +32,6 @@ import { KeyValueStorageProxy } from '../../../plugin/plugin-storage';
 import { WebviewsExtImpl } from '../../../plugin/webviews';
 import { loadManifest } from './plugin-manifest-loader';
 import { TerminalServiceExtImpl } from '../../../plugin/terminal-ext';
-import { reviver } from '../../../plugin/types-impl';
 import { SecretsExtImpl } from '../../../plugin/secrets-ext';
 import { Uint8ArrayReadBuffer, Uint8ArrayWriteBuffer } from '@theia/core/lib/common/message-rpc/uint8-array-message-buffer';
 import { ChannelCloseEvent, MessageProvider } from '@theia/core';
@@ -65,10 +64,7 @@ const rpc = new RPCProtocolImpl({
     onClose: onCloseEmitter.event,
     onError: onErrorEmitter.event,
     onMessage: onMessageEmitter.event
-},
-    {
-        reviver: reviver
-    });
+});
 
 const scripts = new Set<string>();
 
