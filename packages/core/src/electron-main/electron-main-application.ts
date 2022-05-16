@@ -16,7 +16,7 @@
 
 import { inject, injectable, named } from 'inversify';
 import * as electronRemoteMain from '../../electron-shared/@electron/remote/main';
-import { screen, ipcMain, app, BrowserWindow, Event as ElectronEvent, DidCreateWindowDetails, BrowserWindowConstructorOptions, nativeImage } from '../../electron-shared/electron';
+import { screen, ipcMain, app, BrowserWindow, Event as ElectronEvent, BrowserWindowConstructorOptions, nativeImage } from '../../electron-shared/electron';
 import * as path from 'path';
 import { Argv } from 'yargs';
 import { AddressInfo } from 'net';
@@ -339,16 +339,6 @@ export class ElectronMainApplication {
                 overrideBrowserWindowOptions: options,
             };
         });
-        electronWindow.webContents.on('did-create-window', (newWindow: BrowserWindow, details: DidCreateWindowDetails) => {
-            if (this.isSecondaryWindowUrl(details.url)) {
-                newWindow.setMenuBarVisibility(false);
-            }
-        });
-    }
-
-    /** @returns whether the given url references the html file for creating a secondary window for an extracted widget. */
-    protected isSecondaryWindowUrl(url: string): boolean {
-        return !!url && url.endsWith('secondary-window.html');
     }
 
     /**
