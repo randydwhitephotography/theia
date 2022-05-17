@@ -13,6 +13,7 @@
 //
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
+
 import { BrowserWindow } from '../../../electron-shared/electron';
 import * as electronRemote from '../../../electron-shared/@electron/remote';
 import { injectable } from 'inversify';

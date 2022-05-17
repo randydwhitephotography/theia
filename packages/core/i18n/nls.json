@@ -268,7 +268,7 @@
       "searchOnEditorModification": "Search the active editor when modified."
     },
     "secondary-window-ui": {
-      "extract-widget": "Move view to secondary window"
+      "extract-widget": "Move View to Secondary Window"
     },
     "task": {
       "attachTask": "Attach Task...",

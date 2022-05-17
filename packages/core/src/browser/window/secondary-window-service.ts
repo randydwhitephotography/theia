@@ -13,6 +13,7 @@
 //
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
 // *****************************************************************************
+
 export const SecondaryWindowService = Symbol('SecondaryWindowService');
 
 /** Service for opening new secondary windows to contain widgets extracted from the application shell. */
