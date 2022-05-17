@@ -23,6 +23,7 @@ import { PluginPackageDebuggersContribution } from '../../../common/plugin-proto
 import { RPCProtocol } from '../../../common/rpc-protocol';
 import { CommandRegistryImpl } from '../../command-registry';
 import { ConnectionImpl } from '../../../common/connection';
+import { DEBUG_SCHEME, SCHEME_PATTERN } from '@theia/debug/lib/common/debug-uri-utils';
 import {
     Disposable, Breakpoint as BreakpointExt, SourceBreakpoint, FunctionBreakpoint, Location, Range,
     DebugAdapterServer, DebugAdapterExecutable, DebugAdapterNamedPipeServer, DebugAdapterInlineImplementation,
@@ -187,8 +188,6 @@ export class DebugExtImpl implements DebugExt {
         return Disposable.create(() => this.descriptorFactories.delete(debugType));
     }
 
-    static SCHEME = 'debug';
-    static SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z0-9\+\-\.]+:/;
     asDebugSourceUri(source: theia.DebugProtocolSource, session?: theia.DebugSession): theia.Uri {
         const raw = source as DebugProtocol.Source;
         const uri = this.getDebugSourceUri(raw, session?.id);
@@ -201,12 +200,12 @@ export class DebugExtImpl implements DebugExt {
             if (sessionId) {
                 query += `&session=${sessionId}`;
             }
-            return new TheiaURI().withScheme(DebugExtImpl.SCHEME).withPath(raw.path || '').withQuery(query);
+            return new TheiaURI().withScheme(DEBUG_SCHEME).withPath(raw.path || '').withQuery(query);
         }
         if (!raw.path) {
             throw new Error('Unrecognized source type: ' + JSON.stringify(raw));
         }
-        if (raw.path.match(DebugExtImpl.SCHEME_PATTERN)) {
+        if (raw.path.match(SCHEME_PATTERN)) {
             return new TheiaURI(raw.path);
         }
         return new TheiaURI(URI.file(raw.path));
