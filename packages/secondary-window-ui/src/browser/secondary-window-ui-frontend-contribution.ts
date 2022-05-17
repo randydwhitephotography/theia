@@ -22,7 +22,7 @@ import { TabBarToolbarContribution, TabBarToolbarRegistry } from '@theia/core/li
 
 export const EXTRACT_WIDGET = Command.toLocalizedCommand({
     id: 'extract-widget',
-    label: 'Move view to secondary window'
+    label: 'Move View to Secondary Window'
 }, 'theia/secondary-window-ui/extract-widget');
 
 /** Contributes the widget extraction command and registers it in the toolbar of extractable widgets. */
