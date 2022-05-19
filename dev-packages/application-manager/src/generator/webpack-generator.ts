@@ -112,6 +112,16 @@ module.exports = {
     module: {
         rules: [
             {
+                // Removes the host check in PhosporJS to enable moving widgets to secondary windows.
+                test: /widget\\.js$/,
+                loader: 'string-replace-loader',
+                include: /node_modules[\\\\/]@phosphor[\\\\/]widgets[\\\\/]lib/,
+                options: {
+                    search: /^.*?throw new Error\\('Host is not attached.'\\).*?$/gm,
+                    replace: ''
+                }
+            },
+            {
                 test: /\\.css$/,
                 exclude: /materialcolors\\.css$|\\.useable\\.css$/,
                 use: ['style-loader', 'css-loader']
