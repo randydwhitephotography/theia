@@ -112,7 +112,7 @@ module.exports = {
     module: {
         rules: [
             {
-                // Removes the host check in PhosporJS to enable moving widgets to secondary windows.
+                // Removes the host check in PhosphorJS to enable moving widgets to secondary windows.
                 test: /widget\\.js$/,
                 loader: 'string-replace-loader',
                 include: /node_modules[\\\\/]@phosphor[\\\\/]widgets[\\\\/]lib/,

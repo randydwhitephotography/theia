@@ -34,17 +34,7 @@ export class SecondaryWindowUiContribution implements CommandContribution, TabBa
 
     registerCommands(commands: CommandRegistry): void {
         commands.registerCommand(EXTRACT_WIDGET, {
-            execute: async widget => {
-
-                // sanity check
-                if (!ExtractableWidget.is(widget)) {
-                    // command executed with a non-extractable widget
-                    console.error('Invalid attempt to move non-extractable widget to secondary window.');
-                    return;
-                }
-
-                await this.shell.moveWidgetToSecondaryWindow(widget);
-            },
+            execute: async widget => this.shell.moveWidgetToSecondaryWindow(widget),
             isVisible: widget => ExtractableWidget.is(widget),
             isEnabled: widget => ExtractableWidget.is(widget)
         });
