@@ -444,23 +444,25 @@ export class KeybindingWidget extends ReactWidget implements StatefulWidget {
             if (command.id.startsWith('_')) {
                 continue;
             }
-            const keybinding = this.keybindingRegistry.getKeybindingsForCommand(command.id)[0];
-            const item = {
-                command,
-                keybinding,
-                labels: {
-                    id: { value: command.id },
-                    command: { value: this.getCommandLabel(command) },
-                    keybinding: { value: this.getKeybindingLabel(keybinding) || '' },
-                    context: { value: this.getContextLabel(keybinding) || '' },
-                    source: { value: this.getScopeLabel(keybinding) || '' }
-                }
-            };
-            this.formatAndMatchCommand(item);
-            this.formatAndMatchKeybinding(item, []);
-            this.formatAndMatchContext(item);
-            this.formatAndMatchSource(item);
-            items.push(item);
+            const keybindings = this.keybindingRegistry.getKeybindingsForCommand(command.id);
+            keybindings.forEach(keybinding => {
+                const item = {
+                    command,
+                    keybinding,
+                    labels: {
+                        id: { value: command.id },
+                        command: { value: this.getCommandLabel(command) },
+                        keybinding: { value: this.getKeybindingLabel(keybinding) || '' },
+                        context: { value: this.getContextLabel(keybinding) || '' },
+                        source: { value: this.getScopeLabel(keybinding) || '' }
+                    }
+                };
+                this.formatAndMatchCommand(item);
+                this.formatAndMatchKeybinding(item, []);
+                this.formatAndMatchContext(item);
+                this.formatAndMatchSource(item);
+                items.push(item);
+            });
         }
 
         return this.sortKeybindings(items);
