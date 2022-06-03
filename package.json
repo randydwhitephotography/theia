@@ -1,0 +1,74 @@
+{
+  "name": "json-rpc-test",
+	"displayName": "json-rpc-test",
+	"description": "Test extension for the improved JSON RPC protocol integration into the plugin API",
+	"repository": "https://github.com/eclipsesource/theia.git",
+	"license": "(EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0)",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.66.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+        "onStartupFinished"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+      {
+				"command": "json-rpc-test.writeFile100kb",
+				"title": "Write File with 100kb",
+        "when": "workspaceFolderCount > 0"
+			},
+      {
+				"command": "json-rpc-test.writeFile1000kb",
+				"title": "Write File with 1MB",
+        "when": "workspaceFolderCount > 0"
+			},
+      {
+				"command": "json-rpc-test.writeFile10000kb",
+				"title": "Write File with 10MB",
+        "when": "workspaceFolderCount > 0"
+			},
+      {
+				"command": "json-rpc-test.readFile100kb",
+				"title": "Read File with 100kb",
+        "when": "workspaceFolderCount > 0"
+			},
+      {
+				"command": "json-rpc-test.readFile1000kb",
+				"title": "Read File with 1MB",
+        "when": "workspaceFolderCount > 0"
+			},
+      {
+				"command": "json-rpc-test.readFile10000kb",
+				"title": "Read File with 10MB",
+        "when": "workspaceFolderCount > 0"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "yarn run compile",
+		"prepare":"yarn compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"lint": "eslint src --ext ts",
+		"package": "vsce package"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.66.0",
+		"@types/glob": "^7.2.0",
+		"@types/mocha": "^9.1.0",
+		"@types/node": "14.x",
+		"@typescript-eslint/eslint-plugin": "^5.16.0",
+		"@typescript-eslint/parser": "^5.16.0",
+		"eslint": "^8.11.0",
+		"glob": "^7.2.0",
+		"mocha": "^9.2.2",
+		"typescript": "^4.5.5",
+		"@vscode/test-electron": "^2.1.3",
+		"vsce":"2.9.1"
+	}
+}
