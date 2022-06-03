@@ -48,11 +48,11 @@ export interface RpcProtocolOptions {
 
 /**
  * Establish a RPC protocol on top of a given channel. By default the rpc protocol is bi-directional, meaning it is possible to send
- * sends requests and notifications to the remote side (ie. acts as client) as well as receiving requests and notifications from the remote side (i.e. acts as a server).
+ * requests and notifications to the remote side (i.e. acts as client) as well as receiving requests and notifications from the remote side (i.e. acts as a server).
  * Clients can get a promise for a remote request result that will be either resolved or
  * rejected depending on the success of the request. Keeps track of outstanding requests and matches replies to the appropriate request
  * Currently, there is no timeout handling for long running requests implemented.
- * The bi-directional mode can be reconfigured using the {@link RpcProtocolOptions} to construct and RPC protocol instance that acts only as client or server instead.
+ * The bi-directional mode can be reconfigured using the {@link RpcProtocolOptions} to construct an RPC protocol instance that acts only as client or server instead.
  */
 export class RpcProtocol {
     static readonly CANCELLATION_TOKEN_KEY = 'add.cancellation.token';

@@ -27,27 +27,14 @@ export class PluginWorker {
     public readonly rpc: RPCProtocol;
 
     constructor() {
-        const emitter = new Emitter<string>();
-
         this.worker = new Worker(new URL('./worker/worker-main',
             // @ts-expect-error (TS1343)
             // We compile to CommonJS but `import.meta` is still available in the browser
             import.meta.url));
 
-        this.worker.onmessage = m => emitter.fire(m.data);
-        this.worker.onerror = e => console.error(e);
-
         const onCloseEmitter = new Emitter<ChannelCloseEvent>();
         const onMessageEmitter = new Emitter<MessageProvider>();
         const onErrorEmitter = new Emitter<unknown>();
-
-        // eslint-disable-next-line arrow-body-style
-        this.worker.onmessage = buffer => onMessageEmitter.fire(() => {
-            return new Uint8ArrayReadBuffer(buffer.data);
-        });
-
-        this.worker.onerror = e => onErrorEmitter.fire(e);
-        onErrorEmitter.event(e => console.error(e));
 
         this.rpc = new RPCProtocolImpl({
             close: () => {
@@ -66,6 +53,15 @@ export class PluginWorker {
             onError: onErrorEmitter.event,
             onMessage: onMessageEmitter.event
         });
+
+        // eslint-disable-next-line arrow-body-style
+        this.worker.onmessage = buffer => onMessageEmitter.fire(() => {
+            return new Uint8ArrayReadBuffer(buffer.data);
+        });
+
+        this.worker.onerror = e => onErrorEmitter.fire(e);
+
+        this.worker.onerror = e => console.error(e);
     }
 
 }
